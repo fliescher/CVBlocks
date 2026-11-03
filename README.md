@@ -5,12 +5,15 @@ application. Validate the dataset, pick the roles and bullets you want, render
 a tailored HTML CV, print it to PDF.
 
 No database, no lock-in. Every fact is a text file you can read, diff, and
-edit by hand — and later through a GUI that writes the same files.
+edit by hand — or through the PySide6 desktop app, which writes the same files.
 
 ## Requirements
 
 - Python 3.10 or newer
 - No Node, Rust, or LaTeX toolchain
+- The GUI installs PySide6 from `requirements.txt`. Its live preview needs
+  QtWebEngine; on a minimal Linux install the app still runs and can open the
+  preview in your browser (see Troubleshooting).
 
 ## Quick start
 
@@ -23,6 +26,7 @@ python3 -m venv .venv
 
 .venv/bin/python src/render.py --check    # validate the dataset
 .venv/bin/python src/render.py            # render everything to out/cv.html
+.venv/bin/python src/gui.py               # desktop app
 ```
 
 Windows (PowerShell):
@@ -34,6 +38,7 @@ python -m venv .venv
 
 .venv\Scripts\python src\render.py --check
 .venv\Scripts\python src\render.py
+.venv\Scripts\python src\gui.py
 ```
 
 The repository ships empty, so the first render is a blank page. Fill in
@@ -52,7 +57,9 @@ cv-data/                       the dataset — source of truth
   schema/*.schema.json         JSON Schema per file, enforced on every load
   applications/<slug>/         manifest + generated output per application
   notes/                       free-form Markdown, never parsed
-src/render.py                  loader, validator, HTML renderer
+src/cvlib.py                   loader, validator, selection, writer (no Qt)
+src/render.py                  command-line renderer
+src/gui.py                     PySide6 desktop app
 templates/cv.html.j2           single-column A4 template (Jinja2)
 out/                           generated CVs (git-ignored)
 ```
@@ -65,8 +72,11 @@ out/                           generated CVs (git-ignored)
 - **One role per file** keeps diffs small and merge conflicts rare.
 - **Bullets** read action → technology → measurable result.
 - **Themes** are free-form tags (`performance`, `reliability`, `migration`,
-  `mentoring`, `cost`, `security`). They exist so a job description can be
-  matched against your achievements later.
+  `mentoring`, `cost`, `security`). The GUI filters by them; a job-description
+  match can use them later.
+- **Colours** live in `profile.yaml` under `theme`. `accent` styles headings,
+  rules, and links; `highlight` styles bullets marked `highlight: true`.
+  Both are optional and fall back to the defaults.
 - **Unknown fields are rejected.** If you add a field, add it to the matching
   schema file too.
 
@@ -82,6 +92,10 @@ headline: "Senior Software Engineer"
 location: "Berlin, Germany · Remote (EU)"
 email: "alex@example.com"
 phone: "+49 30 1234567"
+
+theme:                      # optional; these are the defaults
+  accent: "#1f4e5f"         # headings, rules, links
+  highlight: "#b45309"      # bullets marked as important
 
 links:
   - label: "github.com/abeispiel"
@@ -131,6 +145,7 @@ achievements:
     text: >
       Raised availability from 99.5% to 99.95% and cut pages 60% by
       introducing SLOs, runbooks, and alert tuning.
+    highlight: true          # optional; use the highlight colour
 ```
 
 `metrics` is optional and currently informational — it keeps the numbers
@@ -192,7 +207,8 @@ include:
 
 Rules:
 
-- An empty `roles`, `skills`, or `include` block means **include everything**.
+- **Omit** `roles` or `skills` to include everything. An explicit empty list
+  includes nothing, which is how the GUI represents "nothing selected".
 - Roles render in the order you list them; without a manifest they sort
   newest-first by end date.
 - Listing `achievements` selects and orders those bullets only.
@@ -221,20 +237,67 @@ Rules:
 | `--out` | `out/cv.html` | output HTML file |
 | `--check` | off | validate the dataset and exit |
 
+## Desktop app
+
+```sh
+.venv/bin/python src/gui.py
+.venv/bin/python src/gui.py --data path/to/cv-data
+```
+
+The window is split in two: the experience library on the left, the live A4
+preview on the right.
+
+**Selecting** — tick roles or individual bullets. A ticked role includes all of
+its bullets; unticking one leaves the role partially checked. The preview and
+the `N role(s) · M bullet(s)` counter update immediately.
+
+**Filtering** — type in the search box or pick a theme. Filters only narrow the
+list; they never change what is selected. The same applies to the Sections tab:
+skill categories, Education, and the Certifications/Open Source block have
+their own checkboxes.
+
+**Colours** — the toolbar has two colour swatches:
+
+- **Accent** — headings, rules, and links.
+- **Highlight** — bullets you mark as important.
+
+Pick a colour, then select the bullets that deserve emphasis and press
+**Mark important**. Highlighted bullets get a star in the tree and render in
+the highlight colour. Press it again on the same selection to remove it.
+Colours are stored in `profile.yaml` under `theme`; the flag is stored per
+achievement as `highlight: true`, so both survive a restart and show up in the
+CLI render too.
+
+**Editing** — `Edit → Edit profile…` covers contact details, links, and summary
+paragraphs. `Add role…` / `Edit role…` open a dialog with the role fields and
+its achievement list; achievements can be added, removed, and reordered.
+`Delete role…` removes the entry and its YAML file after confirmation.
+
+**Saving** — `Save` (`Ctrl+S`) writes only the files that changed: the profile
+when colours or contact details changed, and each edited role. Saves go through
+`ruamel.yaml`, so comments and key order in untouched parts survive.
+
+**Exporting** — `Export HTML…` (`Ctrl+E`) renders the current selection;
+`File → Save selection as…` writes a manifest you can reuse with the CLI.
+`View → Open preview in browser` renders to `out/preview.html` and opens it,
+which is also the fallback when QtWebEngine is unavailable.
+
 ## Workflow
 
 **Add a role**
 
-1. `cp cv-data/roles/_TEMPLATE.yaml cv-data/roles/2024-initech-engineer.yaml`
+1. In the GUI: `Edit → Add role…`, or copy
+   `cv-data/roles/_TEMPLATE.yaml` to `cv-data/roles/2024-initech-engineer.yaml`.
 2. Fill in the fields and achievements. Keep IDs stable once a manifest uses them.
 3. `.venv/bin/python src/render.py --check`
 4. `.venv/bin/python src/render.py`
 
 **Tailor for an application**
 
-1. Create `cv-data/applications/2026-11-acme/manifest.yaml` from the example.
+1. In the GUI: tick the bullets, then `File → Save selection as…`. Or create
+   `cv-data/applications/2026-11-acme/manifest.yaml` from the example by hand.
 2. Paste the job description, list the roles and bullets that answer it.
-3. Render to `out/acme.html`.
+3. Export to `out/acme.html`.
 4. Keep the manifest and the generated HTML together so the variant can be
    reproduced or compared later.
 
@@ -252,6 +315,12 @@ margins **Default**, **Background graphics on**. The filename convention
 - `unknown role id` / `unknown achievement id`: the manifest references an ID
   that does not exist in `roles/`. IDs are case-sensitive.
 - `unknown skill categor(y/ies)`: use the exact `name` from `skills.yaml`.
+- **The preview says QtWebEngine is missing.** The app still edits, saves, and
+  exports; use `View → Open preview in browser`. On Fedora,
+  `sudo dnf install krb5-libs` provides the missing library for live preview.
+- **The app does not start with a "could not load the Qt platform plugin"
+  error.** Install the XCB libraries for your distribution
+  (`libxcb-cursor0` on Debian/Ubuntu, `xcb-util-cursor` on Fedora).
 - Tinkering with a schema is fine — just keep it in sync with your files.
 
 ## Why files instead of a database
@@ -265,7 +334,7 @@ the thing you edit.
 
 ## Roadmap
 
-The planned GUI is PySide6 + SQLite-free: it reads and writes these YAML files
-(using `ruamel.yaml` so comments and key order survive), shows a filterable
-table of achievements by theme, and renders the current selection with the
-same Jinja2 template. Windows and Linux builds via PyInstaller.
+- Package the GUI with PyInstaller for Windows and Linux (build on each OS).
+- Paste a job description and rank achievements by theme overlap.
+- Export plain text for ATS fields and DOCX for portals that demand it.
+- Optional SQLite FTS index built at startup, never edited directly.

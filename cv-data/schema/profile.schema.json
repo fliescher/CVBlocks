@@ -25,6 +25,23 @@
     "summary": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accent", "highlight"],
+      "properties": {
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Headings, rules, and links."
+        },
+        "highlight": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "Bullets marked as important."
+        }
+      }
     }
   }
 }

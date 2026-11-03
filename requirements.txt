@@ -3,5 +3,8 @@ PyYAML>=6.0
 Jinja2>=3.1
 jsonschema>=4.0
 
-# Reserved for the GUI: round-trip YAML writes that keep comments and key order.
+# Desktop app (Qt widgets + WebEngine preview)
+PySide6>=6.6
+
+# Round-trip YAML writes that keep comments and key order.
 ruamel.yaml>=0.18

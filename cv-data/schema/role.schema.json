@@ -45,6 +45,10 @@
             "items": { "type": "string" },
             "description": "Free-form tags for matching, e.g. reliability, scale, migration, mentoring."
           },
+          "highlight": {
+            "type": "boolean",
+            "description": "Render this bullet in the highlight colour."
+          },
           "metrics": {
             "type": "array",
             "items": {

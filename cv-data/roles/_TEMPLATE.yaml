@@ -23,3 +23,5 @@ achievements: []
   #     queries with batched reads, lifting conversion 2.1%.
   #   metrics:
   #     - { label: p95 latency, before: 900, after: 180, unit: ms }
+  #   highlight: true   # optional: render this bullet in the highlight colour
+

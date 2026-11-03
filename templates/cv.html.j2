@@ -14,7 +14,8 @@
     --ink: #1a1f26;
     --muted: #5b6470;
     --rule: #d7dce3;
-    --accent: #1f4e5f;
+    --accent: {{ theme.accent }};
+    --highlight: {{ theme.highlight }};
   }
 
   * { box-sizing: border-box; }
@@ -97,6 +98,8 @@
   li { margin-bottom: 3px; }
   li:last-child { margin-bottom: 0; }
   li::marker { color: #87919d; }
+  li.is-highlight { color: var(--highlight); font-weight: 600; }
+  li.is-highlight::marker { color: var(--highlight); }
 
   a { color: var(--accent); }
 
@@ -238,7 +241,7 @@
       {% if role.scope %}<p class="scope">{{ role.scope }}</p>{% endif %}
       {% if role.achievements %}
       <ul>
-        {% for a in role.achievements %}<li>{{ a.text }}</li>{% endfor %}
+        {% for a in role.achievements %}<li{% if a.get('highlight') %} class="is-highlight"{% endif %}>{{ a.text }}</li>{% endfor %}
       </ul>
       {% endif %}
     </article>

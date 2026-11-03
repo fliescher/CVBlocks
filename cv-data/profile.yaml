@@ -8,6 +8,12 @@ location: ""          # e.g. Berlin, Germany · Remote (EU)
 email: ""
 phone: ""
 
+# Optional. Omit to use the defaults; the GUI writes this block when you
+# pick colours.
+# theme:
+#   accent: "#1f4e5f"       # headings, rules, links
+#   highlight: "#b45309"    # bullets marked as important
+
 links: []
   # - label: GitHub
   #   url: https://github.com/handle
