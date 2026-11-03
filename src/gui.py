@@ -1055,20 +1055,17 @@ class MainWindow(QMainWindow):
             return
 
         path = cvlib.role_path(self.root, role)
+        known_files = {r.get("_file") for r in self.dataset["roles"]}
         counter = 2
-        while path.exists():
+        while path.exists() or path in known_files:
             path = path.with_name(f"{path.stem}-{counter}.yaml")
             counter += 1
         role["_file"] = path
-        try:
-            cvlib.save_role(role, path)
-        except OSError as exc:
-            QMessageBox.critical(self, "Could not save role", str(exc))
-            return
         self.dataset["roles"].append(role)
+        self.dirty_roles.add(path)
         preserved = self.selection() | {(role["id"], a["id"]) for a in role["achievements"]}
         self.rebuild_tree(preserved)
-        self.statusBar().showMessage(f"Added {path.name}", 6000)
+        self.statusBar().showMessage(f"Added {path.name} — save to write it.", 6000)
 
     def edit_role(self) -> None:
         role = self.selected_role()

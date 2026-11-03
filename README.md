@@ -11,16 +11,18 @@ edit by hand — or through the PySide6 desktop app, which writes the same files
 
 - Python 3.10 or newer
 - No Node, Rust, or LaTeX toolchain
-- The GUI installs PySide6 from `requirements.txt`. Its live preview needs
-  QtWebEngine; on a minimal Linux install the app still runs and can open the
-  preview in your browser (see Troubleshooting).
+- The GUI needs PySide6, installed from `requirements.txt` (a few hundred MB
+  with QtWebEngine). Its live preview uses QtWebEngine; on a minimal Linux
+  install the app still runs and can open the preview in your browser (see
+  Troubleshooting).
 
 ## Quick start
+
+Run these from the repository root.
 
 Linux / macOS:
 
 ```sh
-cd ~/gitea_repos/CV_selector
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
@@ -32,7 +34,6 @@ python3 -m venv .venv
 Windows (PowerShell):
 
 ```powershell
-cd $HOME\gitea_repos\CV_selector
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 
@@ -113,8 +114,8 @@ summary:
     mentoring engineers into their next level.
 ```
 
-The second summary paragraph is optional; delete the whole `summary` list if
-you prefer to write it per application.
+Both paragraphs are optional. Keep one if that is enough; leave `summary` as an
+empty list to omit the section entirely.
 
 ### A role
 
@@ -192,7 +193,7 @@ Copy `cv-data/applications/_manifest.example.yaml` to
 application:
   company: Acme Corp
   role_title: Senior Backend Engineer
-  date: 2026-11-03
+  date: "2026-11-03"
   job_description: ""        # paste the posting; it records why this variant exists
 
 include:
@@ -237,6 +238,9 @@ Rules:
 | `--out` | `out/cv.html` | output HTML file |
 | `--check` | off | validate the dataset and exit |
 
+`--check` validates the YAML dataset only. Manifest IDs are resolved when you
+render, so a typo there surfaces as `unknown role id` at that point.
+
 ## Desktop app
 
 ```sh
@@ -252,35 +256,46 @@ its bullets; unticking one leaves the role partially checked. The preview and
 the `N role(s) · M bullet(s)` counter update immediately.
 
 **Filtering** — type in the search box or pick a theme. Filters only narrow the
-list; they never change what is selected. The same applies to the Sections tab:
-skill categories, Education, and the Certifications/Open Source block have
-their own checkboxes.
+list; they never change what is selected.
 
 **Colours** — the toolbar has two colour swatches:
 
 - **Accent** — headings, rules, and links.
 - **Highlight** — bullets you mark as important.
 
-Pick a colour, then select the bullets that deserve emphasis and press
-**Mark important**. Highlighted bullets get a star in the tree and render in
-the highlight colour. Press it again on the same selection to remove it.
-Colours are stored in `profile.yaml` under `theme`; the flag is stored per
-achievement as `highlight: true`, so both survive a restart and show up in the
-CLI render too.
+Select the bullets that deserve emphasis and press **Mark important**. If every
+selected bullet is already highlighted, the button removes the highlight
+instead, so it acts as a toggle for the selection. Highlighted bullets get a
+star in the tree and render in the highlight colour. Colours are stored in
+`profile.yaml` under `theme`; the flag is stored per achievement as
+`highlight: true`, so both survive a restart and show up in the CLI render too.
+
+**Sections** — unlike the search and theme filters, the checkboxes on the
+Sections tab are part of the CV selection: skill categories, Education, and the
+extras block (certifications, open source, talks, languages). They never delete
+data; unchecking Education just omits the section from this variant and from a
+manifest you save.
 
 **Editing** — `Edit → Edit profile…` covers contact details, links, and summary
 paragraphs. `Add role…` / `Edit role…` open a dialog with the role fields and
 its achievement list; achievements can be added, removed, and reordered.
 `Delete role…` removes the entry and its YAML file after confirmation.
+`File → Open dataset…` switches to another `cv-data` folder.
 
-**Saving** — `Save` (`Ctrl+S`) writes only the files that changed: the profile
-when colours or contact details changed, and each edited role. Saves go through
-`ruamel.yaml`, so comments and key order in untouched parts survive.
+**Saving** — dataset edits are not written until `Save` (`Ctrl+S`), including a
+newly added role. Only changed files are written: the profile when colours or
+contact details changed, and each edited role. Saves go through `ruamel.yaml`,
+so comments and key order in untouched parts survive; comments inside a
+replaced list (such as a role's achievements) may be dropped. Closing with
+unsaved changes prompts you. Deleting a role is the exception: its file is
+removed immediately after confirmation.
 
 **Exporting** — `Export HTML…` (`Ctrl+E`) renders the current selection;
-`File → Save selection as…` writes a manifest you can reuse with the CLI.
-`View → Open preview in browser` renders to `out/preview.html` and opens it,
-which is also the fallback when QtWebEngine is unavailable.
+`File → Save selection as…` writes a manifest you can reuse with the CLI. The
+manifest is written with a blank company, role title, and job description (only
+the date is filled in) — edit those by hand if you want the record. `View →
+Open preview in browser` renders to `out/preview.html` and opens it, which is
+also the fallback when QtWebEngine is unavailable.
 
 ## Workflow
 
@@ -297,7 +312,7 @@ which is also the fallback when QtWebEngine is unavailable.
 1. In the GUI: tick the bullets, then `File → Save selection as…`. Or create
    `cv-data/applications/2026-11-acme/manifest.yaml` from the example by hand.
 2. Paste the job description, list the roles and bullets that answer it.
-3. Export to `out/acme.html`.
+3. Export to `out/acme.html` (choose the name in the export dialog).
 4. Keep the manifest and the generated HTML together so the variant can be
    reproduced or compared later.
 
