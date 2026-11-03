@@ -70,6 +70,10 @@ if os.environ.get("CV_NO_WEBENGINE") != "1":
     except Exception:
         QWebEngineView = None  # type: ignore[assignment]
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+EXAMPLES_ROOT = PROJECT_ROOT / "examples"
+EXAMPLES_DATA = EXAMPLES_ROOT / "data"
+
 
 # --------------------------------------------------------------------------
 # Helpers
@@ -96,6 +100,31 @@ def populate_theme_combo(combo: QComboBox, roles: list[dict[str, Any]]) -> None:
     index = combo.findText(current)
     combo.setCurrentIndex(max(index, 0))
     combo.blockSignals(False)
+
+
+def discover_examples() -> list[dict[str, Any]]:
+    """Return the bundled layouts, sorted by directory name."""
+    examples: list[dict[str, Any]] = []
+    if not EXAMPLES_ROOT.exists():
+        return examples
+
+    for meta_path in sorted(EXAMPLES_ROOT.glob("*/example.yaml")):
+        try:
+            meta = cvlib.load_yaml(meta_path) or {}
+        except cvlib.CVDatasetError:
+            continue
+        if not isinstance(meta, dict):
+            continue
+        template = meta_path.parent / (meta.get("template") or "template.html.j2")
+        if not template.exists():
+            continue
+        examples.append({
+            "slug": meta_path.parent.name,
+            "name": meta.get("name") or meta_path.parent.name.replace("-", " ").title(),
+            "description": meta.get("description", ""),
+            "template": template,
+        })
+    return examples
 
 
 # --------------------------------------------------------------------------
@@ -485,6 +514,55 @@ class PreviewPane(QWidget):
             self.view.setHtml(f"<p>{message}</p>")
 
 
+class ExampleDialog(QDialog):
+    def __init__(self, examples: list[dict[str, Any]], parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Load example")
+        self.resize(680, 430)
+        self.examples = examples
+
+        self.list = QListWidget()
+        for example in examples:
+            self.list.addItem(example["name"])
+        self.list.currentRowChanged.connect(self.show_description)
+        self.list.itemDoubleClicked.connect(lambda _item: self.accept())
+
+        self.description = QLabel()
+        self.description.setWordWrap(True)
+        self.description.setMinimumHeight(52)
+        self.description.setStyleSheet("color: #5f6b73;")
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Load")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Choose a bundled layout. The sample dataset is read-only."))
+        layout.addWidget(self.list, 1)
+        layout.addWidget(self.description)
+        layout.addWidget(buttons)
+
+        self.list.setCurrentRow(0)
+
+    def show_description(self, row: int) -> None:
+        if 0 <= row < len(self.examples):
+            example = self.examples[row]
+            self.description.setText(
+                f"<b>{example['name']}</b><br>{example['description']}"
+            )
+        else:
+            self.description.clear()
+
+    def selected_example(self) -> dict[str, Any] | None:
+        row = self.list.currentRow()
+        if 0 <= row < len(self.examples):
+            return self.examples[row]
+        return None
+
+
 # --------------------------------------------------------------------------
 # Main window
 # --------------------------------------------------------------------------
@@ -497,6 +575,8 @@ class MainWindow(QMainWindow):
         self.dirty_roles: set[Path] = set()
         self.profile_dirty = False
         self._updating = False
+        self.template_path = cvlib.DEFAULT_TEMPLATE
+        self.example: dict[str, Any] | None = None
 
         self.setWindowTitle("CV Selector")
         self.resize(1360, 900)
@@ -542,30 +622,44 @@ class MainWindow(QMainWindow):
         toolbar.addAction(clear_all)
         toolbar.addSeparator()
 
-        save = QAction("Save", self)
-        save.setShortcut("Ctrl+S")
-        save.triggered.connect(self.save)
-        export = QAction("Export HTML…", self)
-        export.setShortcut("Ctrl+E")
-        export.triggered.connect(self.export_html)
-        toolbar.addAction(save)
-        toolbar.addAction(export)
+        self.save_action = QAction("Save", self)
+        self.save_action.setShortcut("Ctrl+S")
+        self.save_action.triggered.connect(self.save)
+        self.export_action = QAction("Export HTML…", self)
+        self.export_action.setShortcut("Ctrl+E")
+        self.export_action.triggered.connect(self.export_html)
+        toolbar.addAction(self.save_action)
+        toolbar.addAction(self.export_action)
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
         file_menu.addAction("Open dataset…", self.open_dataset)
+        file_menu.addAction("Load example…", self.load_example)
         file_menu.addSeparator()
-        file_menu.addAction(save)
-        file_menu.addAction(export)
-        file_menu.addAction("Save selection as…", self.save_manifest)
+        file_menu.addAction(self.save_action)
+        file_menu.addAction(self.export_action)
+        self.save_selection_action = file_menu.addAction(
+            "Save selection as…", self.save_manifest
+        )
         file_menu.addSeparator()
         file_menu.addAction("Quit", self.close)
 
         edit_menu = menu.addMenu("&Edit")
-        edit_menu.addAction("Edit profile…", self.edit_profile)
-        edit_menu.addAction("Add role…", self.add_role)
-        edit_menu.addAction("Edit role…", self.edit_role)
-        edit_menu.addAction("Delete role…", self.delete_role)
+        self.profile_action = edit_menu.addAction("Edit profile…", self.edit_profile)
+        self.add_role_action = edit_menu.addAction("Add role…", self.add_role)
+        self.edit_role_action = edit_menu.addAction("Edit role…", self.edit_role)
+        self.delete_role_action = edit_menu.addAction("Delete role…", self.delete_role)
+
+        self.example_locked_actions = [
+            self.save_action,
+            self.save_selection_action,
+            self.mark_action,
+            self.profile_action,
+            self.add_role_action,
+            self.edit_role_action,
+            self.delete_role_action,
+        ]
+        self.example_locked_widgets = [self.accent_button, self.highlight_button]
 
         view_menu = menu.addMenu("&View")
         view_menu.addAction("Refresh preview", self.update_preview, "F5")
@@ -668,7 +762,12 @@ class MainWindow(QMainWindow):
 
     # ---------------- Dataset ----------------
 
-    def load_dataset(self, root: Path) -> None:
+    def load_dataset(
+        self,
+        root: Path,
+        template: Path | None = None,
+        example: dict[str, Any] | None = None,
+    ) -> None:
         try:
             dataset = cvlib.load_dataset(root)
         except cvlib.CVDatasetError as exc:
@@ -676,13 +775,36 @@ class MainWindow(QMainWindow):
             return
         self.root = root
         self.dataset = dataset
+        self.template_path = template or cvlib.DEFAULT_TEMPLATE
+        self.example = example
         self.dirty_roles.clear()
         self.profile_dirty = False
-        self.setWindowTitle(f"CV Selector — {root}")
+        if example:
+            self.setWindowTitle(f"CV Selector — Example: {example['name']}")
+        else:
+            self.setWindowTitle(f"CV Selector — {root}")
+        self.update_example_state()
         self.refresh_theme_buttons()
         self.rebuild_sections()
         self.rebuild_tree()
         self.update_preview()
+        if example:
+            self.statusBar().showMessage(
+                f"Example '{example['name']}' is read-only. Use File → Open dataset… to return.",
+                8000,
+            )
+
+    def update_example_state(self) -> None:
+        locked = self.example is not None
+        for action in self.example_locked_actions:
+            action.setEnabled(not locked)
+        for widget in self.example_locked_widgets:
+            widget.setEnabled(not locked)
+
+    def output_root(self) -> Path:
+        if self.example:
+            return PROJECT_ROOT / "out"
+        return self.root.parent / "out"
 
     def refresh_theme_buttons(self) -> None:
         theme = cvlib.theme_from(self.dataset["profile"])
@@ -873,6 +995,8 @@ class MainWindow(QMainWindow):
     # ---------------- Colours and highlighting ----------------
 
     def pick_color(self, key: str) -> None:
+        if self.example:
+            return
         theme = cvlib.theme_from(self.dataset["profile"])
         initial = QColor(theme[key])
         color = QColorDialog.getColor(initial, self, f"{key.capitalize()} colour")
@@ -897,6 +1021,8 @@ class MainWindow(QMainWindow):
                     child.setForeground(0, QBrush())
 
     def toggle_highlight(self) -> None:
+        if self.example:
+            return
         targets: list[QTreeWidgetItem] = []
         for index in range(self.tree.topLevelItemCount()):
             role_item = self.tree.topLevelItem(index)
@@ -974,7 +1100,7 @@ class MainWindow(QMainWindow):
             return
         manifest = self.current_manifest()
         try:
-            html = cvlib.render_dataset(self.dataset, manifest)
+            html = cvlib.render_dataset(self.dataset, manifest, self.template_path)
         except cvlib.CVDatasetError as exc:
             self.preview.set_message(str(exc))
             self.statusBar().showMessage(str(exc), 8000)
@@ -988,12 +1114,13 @@ class MainWindow(QMainWindow):
         self.counts_label.setText(f"{roles} role(s) · {bullets} bullet(s)")
 
     def export_html(self) -> None:
-        default = str(self.root.parent / "out" / f"cv-{date.today().isoformat()}.html")
+        name = f"{self.example['slug']}.html" if self.example else f"cv-{date.today().isoformat()}.html"
+        default = str(self.output_root() / name)
         path, _ = QFileDialog.getSaveFileName(self, "Export HTML", default, "HTML (*.html)")
         if not path:
             return
         try:
-            html = cvlib.render_dataset(self.dataset, self.current_manifest())
+            html = cvlib.render_dataset(self.dataset, self.current_manifest(), self.template_path)
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             Path(path).write_text(html, encoding="utf-8")
         except (cvlib.CVDatasetError, OSError) as exc:
@@ -1002,6 +1129,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Wrote {path}", 6000)
 
     def save_manifest(self) -> None:
+        if self.example:
+            return
         default = str(self.root / "applications" / date.today().isoformat() / "manifest.yaml")
         path, _ = QFileDialog.getSaveFileName(self, "Save selection", default, "YAML (*.yaml)")
         if not path:
@@ -1015,11 +1144,11 @@ class MainWindow(QMainWindow):
 
     def open_in_browser(self) -> None:
         try:
-            html = cvlib.render_dataset(self.dataset, self.current_manifest())
+            html = cvlib.render_dataset(self.dataset, self.current_manifest(), self.template_path)
         except cvlib.CVDatasetError as exc:
             QMessageBox.critical(self, "Cannot render", str(exc))
             return
-        target = self.root.parent / "out" / "preview.html"
+        target = self.output_root() / "preview.html"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(html, encoding="utf-8")
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
@@ -1027,6 +1156,8 @@ class MainWindow(QMainWindow):
     # ---------------- Editing ----------------
 
     def edit_profile(self) -> None:
+        if self.example:
+            return
         dialog = ProfileDialog(self.dataset["profile"], self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
@@ -1043,6 +1174,8 @@ class MainWindow(QMainWindow):
         return self.item_role(item)
 
     def add_role(self) -> None:
+        if self.example:
+            return
         role = cvlib.new_role()
         dialog = RoleDialog(role, self)
         dialog.setWindowTitle("Add role")
@@ -1068,6 +1201,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Added {path.name} — save to write it.", 6000)
 
     def edit_role(self) -> None:
+        if self.example:
+            return
         role = self.selected_role()
         if role is None:
             self.statusBar().showMessage("Select a role first.", 4000)
@@ -1106,6 +1241,8 @@ class MainWindow(QMainWindow):
         self.rebuild_tree(preserved)
 
     def delete_role(self) -> None:
+        if self.example:
+            return
         role = self.selected_role()
         if role is None:
             self.statusBar().showMessage("Select a role first.", 4000)
@@ -1141,6 +1278,8 @@ class MainWindow(QMainWindow):
     # ---------------- Persistence ----------------
 
     def save(self) -> None:
+        if self.example:
+            return
         errors: list[str] = []
         try:
             if self.profile_dirty:
@@ -1164,6 +1303,36 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Save failed", "\n".join(errors))
         else:
             self.statusBar().showMessage("Saved.", 4000)
+
+    def load_example(self) -> None:
+        examples = discover_examples()
+        if not examples:
+            QMessageBox.information(
+                self,
+                "No examples",
+                "No bundled examples were found next to the application.",
+            )
+            return
+
+        dialog = ExampleDialog(examples, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        example = dialog.selected_example()
+        if example is None:
+            return
+
+        if self.profile_dirty or self.dirty_roles:
+            answer = QMessageBox.question(
+                self,
+                "Unsaved changes",
+                "Discard unsaved changes and load the example?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+
+        self.load_dataset(EXAMPLES_DATA, example["template"], example)
 
     def open_dataset(self) -> None:
         path = QFileDialog.getExistingDirectory(self, "Open cv-data folder", str(self.root))

@@ -223,13 +223,19 @@ def select_skills(skills: dict[str, Any], manifest: dict[str, Any] | None) -> di
     return {"categories": [by_name[name] for name in wanted]}
 
 
-def extras_items(extras: dict[str, Any], manifest: dict[str, Any] | None) -> list[str]:
+def extras_sections(extras: dict[str, Any], manifest: dict[str, Any] | None) -> dict[str, list[str]]:
     include = _include(manifest)
+    keys = ("certifications", "open_source", "talks", "languages")
     if include.get("extras") is False:
-        return []
+        return {key: [] for key in keys}
+    return {key: list(extras.get(key, [])) for key in keys}
+
+
+def extras_items(extras: dict[str, Any], manifest: dict[str, Any] | None) -> list[str]:
+    sections = extras_sections(extras, manifest)
     items: list[str] = []
     for key in ("certifications", "open_source", "talks", "languages"):
-        items.extend(extras.get(key, []))
+        items.extend(sections[key])
     return items
 
 
@@ -252,6 +258,7 @@ def build_context(dataset: dict[str, Any], manifest: dict[str, Any] | None) -> d
         "skills": select_skills(dataset["skills"], manifest),
         "roles": roles,
         "education": education,
+        "extras": extras_sections(dataset["extras"], manifest),
         "extras_items": extras_items(dataset["extras"], manifest),
     }
 

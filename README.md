@@ -45,6 +45,10 @@ python -m venv .venv
 The repository ships empty, so the first render is a blank page. Fill in
 `cv-data/profile.yaml`, add a role, and run it again.
 
+To explore the ten bundled layouts instead, start the GUI and choose
+`File → Load example…`, or see `examples/README.md` for the command-line
+version.
+
 ## Layout
 
 ```
@@ -61,7 +65,10 @@ cv-data/                       the dataset — source of truth
 src/cvlib.py                   loader, validator, selection, writer (no Qt)
 src/render.py                  command-line renderer
 src/gui.py                     PySide6 desktop app
-templates/cv.html.j2           single-column A4 template (Jinja2)
+templates/cv.html.j2           default single-column A4 template (Jinja2)
+examples/                      10 bundled layouts with a shared fictional dataset
+  data/                        sample profile, roles, skills, education, extras
+  01-classic/ … 10-elegant/    example.yaml + template.html.j2 per layout
 out/                           generated CVs (git-ignored)
 ```
 
@@ -81,7 +88,7 @@ out/                           generated CVs (git-ignored)
 - **Unknown fields are rejected.** If you add a field, add it to the matching
   schema file too.
 
-## Examples
+## Dataset examples
 
 ### A profile
 
@@ -281,6 +288,14 @@ paragraphs. `Add role…` / `Edit role…` open a dialog with the role fields an
 its achievement list; achievements can be added, removed, and reordered.
 `Delete role…` removes the entry and its YAML file after confirmation.
 `File → Open dataset…` switches to another `cv-data` folder.
+`File → Load example…` opens one of the ten bundled layouts instead; see
+[Bundled layouts](#bundled-layouts).
+
+**Examples** — example mode loads the shared fictional dataset from
+`examples/data`. It is read-only: selection, section checkboxes, preview, and
+`Export HTML…` still work, but `Save`, `Save selection as…`, the colour
+pickers, `Mark important`, and the editing actions are disabled. Use
+`File → Open dataset…` to return to your own data and the default template.
 
 **Saving** — dataset edits are not written until `Save` (`Ctrl+S`), including a
 newly added role. Only changed files are written: the profile when colours or
@@ -296,6 +311,40 @@ manifest is written with a blank company, role title, and job description (only
 the date is filled in) — edit those by hand if you want the record. `View →
 Open preview in browser` renders to `out/preview.html` and opens it, which is
 also the fallback when QtWebEngine is unavailable.
+
+## Bundled layouts
+
+`examples/` contains ten complete layouts that share one fictional dataset
+(Jordan Avery, Staff Platform Engineer). Each directory has an `example.yaml`
+with the display name and description, plus a standalone
+`template.html.j2`. The dataset lives in `examples/data/`; its schema files are
+copies of `cv-data/schema/` so the folder is self-contained.
+
+| Directory | Name | Layout and style |
+| --- | --- | --- |
+| `01-classic` | Classic | Traditional single column, serif type, ruled headings. |
+| `02-sidebar` | Sidebar | Light left rail for contact, skills, and education. |
+| `03-timeline` | Timeline | Vertical timeline with dates in the margin and dot markers. |
+| `04-compact` | Compact | Dense two-column one-pager with small type. |
+| `05-editorial` | Editorial | Display type, pull-quote summary, numbered sections. |
+| `06-minimal` | Minimal | Airy monochrome layout with hairline rules. |
+| `07-header-band` | Header band | Full-width colour band and pill-shaped skills. |
+| `08-cards` | Cards | A bordered card per role plus skill chips. |
+| `09-technical` | Technical | Monospace labels and terminal-inspired section markers. |
+| `10-elegant` | Elegant | Centred serif name, narrow right rail, dotted leaders. |
+
+In the desktop app, choose `File → Load example…` and pick a layout. Example
+mode is read-only so the bundled files cannot be changed by accident; export
+still works. Render one from the command line with:
+
+```sh
+.venv/bin/python src/render.py \
+  --data examples/data \
+  --template examples/07-header-band/template.html.j2 \
+  --out out/examples/header-band.html
+```
+
+`examples/README.md` lists the same layouts and explains the folder structure.
 
 ## Workflow
 
