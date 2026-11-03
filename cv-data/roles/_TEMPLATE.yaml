@@ -1,0 +1,25 @@
+# Copy to roles/YYYY-company-short.yaml and fill in.
+# Files starting with "_" are ignored by the loader.
+#
+# Conventions:
+#   - Quote dates: YAML would otherwise strip leading zeros or coerce them.
+#   - id values must be unique (role id across roles, achievement id within a role).
+#   - Bullet text follows: action -> technology -> measurable result.
+
+id: ""                  # e.g. acme-senior
+company: ""
+title: ""
+start: ""               # YYYY-MM
+end: null               # YYYY-MM, or null while this is your current role
+location: ""            # e.g. Remote (EU) or Berlin, Germany
+scope: >
+  One sentence of context: product, scale, team size, and what you owned.
+
+achievements: []
+  # - id: checkout-latency
+  #   themes: [performance, delivery]
+  #   text: >
+  #     Cut p95 checkout latency from 900 ms to 180 ms by replacing N+1
+  #     queries with batched reads, lifting conversion 2.1%.
+  #   metrics:
+  #     - { label: p95 latency, before: 900, after: 180, unit: ms }

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ profile.name or "Curriculum Vitae" }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 16mm;
+  }
+
+  :root {
+    --ink: #1a1f26;
+    --muted: #5b6470;
+    --rule: #d7dce3;
+    --accent: #1f4e5f;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    margin: 0;
+    background: #eef1f4;
+    color: var(--ink);
+    font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sheet {
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 24px auto;
+    padding: 16mm 17mm;
+    box-shadow: 0 2px 14px rgba(20, 30, 40, .14);
+  }
+
+  header { margin-bottom: 14px; }
+
+  h1 {
+    margin: 0 0 2px;
+    font-size: 25pt;
+    line-height: 1.05;
+    letter-spacing: -.015em;
+    font-weight: 700;
+  }
+
+  .headline {
+    font-size: 11.5pt;
+    font-weight: 500;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+
+  .contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 0;
+    font-size: 9.2pt;
+    color: var(--muted);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .contact li { white-space: nowrap; }
+  .contact a { color: inherit; text-decoration: none; }
+  .contact li:not(:last-child)::after {
+    content: "·";
+    margin: 0 8px;
+    color: #aeb6c0;
+  }
+
+  section { margin-top: 15px; }
+
+  h2 {
+    margin: 0 0 7px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  p { margin: 0 0 6px; }
+  p:last-child { margin-bottom: 0; }
+  .summary p + p { margin-top: 6px; }
+
+  ul { margin: 0; padding-left: 15px; }
+  li { margin-bottom: 3px; }
+  li:last-child { margin-bottom: 0; }
+  li::marker { color: #87919d; }
+
+  a { color: var(--accent); }
+
+  .skills {
+    display: grid;
+    grid-template-columns: 26mm 1fr;
+    gap: 3px 10px;
+    margin: 0;
+    font-size: 9.8pt;
+  }
+
+  .skills dt {
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .skills dd { margin: 0; }
+
+  .job { margin-bottom: 13px; page-break-inside: avoid; }
+  .job:last-child { margin-bottom: 0; }
+
+  .job-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .job-title {
+    font-size: 11pt;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .job-title .company { font-weight: 600; }
+
+  .job-meta {
+    font-size: 9.3pt;
+    color: var(--muted);
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .scope {
+    font-size: 9.6pt;
+    color: var(--muted);
+    margin: 1px 0 5px;
+  }
+
+  .two-col {
+    columns: 2;
+    column-gap: 14mm;
+    padding-left: 14px;
+  }
+  .two-col li { break-inside: avoid; }
+
+  .entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 2px;
+  }
+  .entry + .entry { margin-top: 5px; }
+  .entry .what { font-weight: 600; }
+  .entry .where { color: var(--muted); font-weight: 400; }
+  .entry .when { color: var(--muted); font-size: 9.3pt; white-space: nowrap; }
+
+  @media print {
+    body { background: #fff; }
+    .sheet {
+      width: auto;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      box-shadow: none;
+    }
+    a { color: inherit; text-decoration: none; }
+    .job, .entry, section > h2 { break-inside: avoid; }
+    h2 { break-after: avoid; }
+  }
+
+  @media screen and (max-width: 800px) {
+    .sheet { width: auto; min-height: 0; margin: 0; padding: 22px 18px; }
+    .skills { grid-template-columns: 1fr; gap: 1px; }
+    .skills dd { margin-bottom: 4px; }
+    .two-col { columns: 1; }
+  }
+</style>
+</head>
+<body>
+
+<main class="sheet">
+
+  {% if profile.name or profile.headline or contact %}
+  <header>
+    {% if profile.name %}<h1>{{ profile.name }}</h1>{% endif %}
+    {% if profile.headline %}<p class="headline">{{ profile.headline }}</p>{% endif %}
+    {% if contact %}
+    <ul class="contact">
+      {% for item in contact %}
+      <li>{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}{{ item.text }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </header>
+  {% endif %}
+
+  {% if profile.summary %}
+  <section aria-labelledby="summary">
+    <h2 id="summary">Summary</h2>
+    <div class="summary">
+      {% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if skills.categories %}
+  <section aria-labelledby="skills">
+    <h2 id="skills">Core Skills</h2>
+    <dl class="skills">
+      {% for cat in skills.categories %}
+      <dt>{{ cat.name }}</dt>
+      <dd>{{ cat['items'] | join(', ') }}</dd>
+      {% endfor %}
+    </dl>
+  </section>
+  {% endif %}
+
+  {% if roles %}
+  <section aria-labelledby="experience">
+    <h2 id="experience">Experience</h2>
+    {% for role in roles %}
+    <article class="job">
+      <div class="job-head">
+        <h3 class="job-title">{{ role.title }}{% if role.company %} · <span class="company">{{ role.company }}</span>{% endif %}</h3>
+        {% if role.meta %}<div class="job-meta">{{ role.meta }}</div>{% endif %}
+      </div>
+      {% if role.scope %}<p class="scope">{{ role.scope }}</p>{% endif %}
+      {% if role.achievements %}
+      <ul>
+        {% for a in role.achievements %}<li>{{ a.text }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if education.entries %}
+  <section aria-labelledby="education">
+    <h2 id="education">Education</h2>
+    {% for entry in education.entries %}
+    <div class="entry">
+      <div>
+        <span class="what">{{ entry.degree }}</span>, <span class="where">{{ entry.institution }}</span>
+      </div>
+      {% if entry.year %}<div class="when">{{ entry.year }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if extras_items %}
+  <section aria-labelledby="extras">
+    <h2 id="extras">Certifications &amp; Open Source</h2>
+    <ul class="two-col">
+      {% for item in extras_items %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+</main>
+</body>
+</html>

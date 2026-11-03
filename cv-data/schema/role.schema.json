@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Role",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "company", "title", "start", "end", "location", "scope", "achievements"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Stable slug, unique across all roles. Used by selection manifests."
+    },
+    "company": { "type": "string" },
+    "title": { "type": "string" },
+    "start": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+      "description": "YYYY-MM, quoted so YAML keeps it a string."
+    },
+    "end": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+      "description": "YYYY-MM, or null for the current role."
+    },
+    "location": { "type": "string" },
+    "scope": {
+      "type": "string",
+      "description": "One sentence of context: product, team size, scale, ownership."
+    },
+    "achievements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "themes"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Unique within the role. Used by selection manifests."
+          },
+          "text": { "type": "string" },
+          "themes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Free-form tags for matching, e.g. reliability, scale, migration, mentoring."
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "before", "after", "unit"],
+              "properties": {
+                "label": { "type": "string" },
+                "before": { "type": ["number", "string"] },
+                "after": { "type": ["number", "string"] },
+                "unit": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

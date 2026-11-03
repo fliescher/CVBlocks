@@ -1,0 +1,21 @@
+# Identity, contact details, and the summary that opens every CV.
+# Values are plain strings; quote anything YAML might reinterpret
+# (dates, versions, phone numbers starting with +).
+
+name: ""
+headline: ""          # e.g. Senior Software Engineer
+location: ""          # e.g. Berlin, Germany · Remote (EU)
+email: ""
+phone: ""
+
+links: []
+  # - label: GitHub
+  #   url: https://github.com/handle
+  # - label: LinkedIn
+  #   url: https://linkedin.com/in/handle
+
+summary: []
+  # - >
+  #   Senior software engineer with 8+ years building and operating
+  #   payment systems. Deep in Go and PostgreSQL, with a track record
+  #   of turning unreliable legacy services into observable ones.

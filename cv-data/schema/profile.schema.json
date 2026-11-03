@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "headline", "location", "email", "phone", "links", "summary"],
+  "properties": {
+    "name": { "type": "string" },
+    "headline": { "type": "string" },
+    "location": { "type": "string" },
+    "email": { "type": "string" },
+    "phone": { "type": "string" },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "url"],
+        "properties": {
+          "label": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

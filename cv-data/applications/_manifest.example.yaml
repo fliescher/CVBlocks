@@ -1,0 +1,19 @@
+# Copy into applications/<YYYY-MM-company>/manifest.yaml.
+# An empty list means "include everything" — useful for a master CV.
+
+application:
+  company: ""
+  role_title: ""
+  date: ""              # YYYY-MM-DD
+  job_description: ""   # keep the posting here; it is the record of why this variant exists
+
+include:
+  roles: []
+    # - id: acme-senior
+    #   achievements: [checkout-latency, on-call-reliability]
+    # - id: globex-engineer        # a bare id includes every achievement
+  skills: []
+    # - Languages
+    # - Reliability
+  education: true
+  extras: true
