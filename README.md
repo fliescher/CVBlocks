@@ -20,7 +20,13 @@ edit by hand — or through the PySide6 desktop app, which writes the same files
 
 ## Quick start
 
-Run these from the repository root.
+There are 3 python scripts that can be run on Linux/MacOS as well as Windows with the following command from the Terminal/Powershell:
+```
+python setup.py      #to run the automatic installation
+python validate.py   #to render everything to out/cv.html
+python launch_gui.py #to open the graphical user interface
+```
+Alternatively, the commands can also be run manually as follows:
 
 Linux / macOS:
 
