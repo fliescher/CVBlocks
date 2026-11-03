@@ -1,0 +1,82 @@
+# Bundled layouts. Add a layout: drop NN-name.html.j2 here and list it below.
+layouts:
+  - slug: 01-classic
+    name: "Classic"
+    description: "Traditional single column with serif type, ruled headings, and a centred header."
+    template: 01-classic.html.j2
+  - slug: 02-sidebar
+    name: "Sidebar"
+    description: "A light sidebar for contact, skills, and education, with experience in the main column."
+    template: 02-sidebar.html.j2
+  - slug: 03-timeline
+    name: "Timeline"
+    description: "A vertical timeline with dates in the margin and a clear progression through roles."
+    template: 03-timeline.html.j2
+  - slug: 04-compact
+    name: "Compact"
+    description: "A dense two-column one-pager for experienced hires who need every line to count."
+    template: 04-compact.html.j2
+  - slug: 05-editorial
+    name: "Editorial"
+    description: "Magazine-inspired display type, a pull-quote summary, and generous serif body copy."
+    template: 05-editorial.html.j2
+  - slug: 06-minimal
+    name: "Minimal"
+    description: "Airy and monochrome, with hairline rules, small type, and almost no chrome."
+    template: 06-minimal.html.j2
+  - slug: 07-header-band
+    name: "Header band"
+    description: "A full-width colour band, a two-column body, and pill-shaped skill groups."
+    template: 07-header-band.html.j2
+  - slug: 08-cards
+    name: "Cards"
+    description: "Each role in its own card, with a grid of skill chips and a light grey canvas."
+    template: 08-cards.html.j2
+  - slug: 09-technical
+    name: "Technical"
+    description: "Monospace labels, key/value skills, and terminal-inspired section markers."
+    template: 09-technical.html.j2
+  - slug: 10-elegant
+    name: "Elegant"
+    description: "A centred serif name, a narrow contact rail, small caps, and dotted leaders."
+    template: 10-elegant.html.j2
+  - slug: 11-bold-sidebar
+    name: "Bold sidebar"
+    description: "Solid accent-coloured left rail with white text for name, contact, skills, and education."
+    template: 11-bold-sidebar.html.j2
+  - slug: 12-right-rail
+    name: "Right rail"
+    description: "Experience on the left, a tinted rail on the right for contact, skills, and education."
+    template: 12-right-rail.html.j2
+  - slug: 13-swiss
+    name: "Swiss"
+    description: "Grid-based and sans-serif: a big flush-left name and section labels in a left margin column."
+    template: 13-swiss.html.j2
+  - slug: 14-split-header
+    name: "Split header"
+    description: "Name on the left, contact stacked on the right, square bullets, and a three-column skills grid."
+    template: 14-split-header.html.j2
+  - slug: 15-ribbon
+    name: "Ribbon"
+    description: "Section headings as full-width accent ribbons with an arrow tip; tinted contact strip."
+    template: 15-ribbon.html.j2
+  - slug: 16-monogram
+    name: "Monogram"
+    description: "Initials in an accent circle beside the name; roles marked by a vertical accent line."
+    template: 16-monogram.html.j2
+  - slug: 17-frame
+    name: "Frame"
+    description: "The whole page inside a thin accent frame, with centred headings flanked by rules."
+    template: 17-frame.html.j2
+  - slug: 18-newspaper
+    name: "Newspaper"
+    description: "Masthead with double rules, a drop cap, and experience set in two text columns."
+    template: 18-newspaper.html.j2
+  - slug: 19-ledger
+    name: "Ledger"
+    description: "Table-like rows: company and dates in a ruled left column, details on the right; skills as a striped table."
+    template: 19-ledger.html.j2
+  - slug: 20-soft
+    name: "Soft"
+    description: "Rounded and gentle: gradient header card, date pills, and tinted rounded skill boxes."
+    template: 20-soft.html.j2

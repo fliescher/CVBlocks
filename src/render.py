@@ -6,15 +6,20 @@ Usage:
     python src/render.py --check                  # validate only
     python src/render.py --manifest app.yaml      # filtered variant
     python src/render.py --out out/acme.html
+    python src/render.py --list-layouts           # show the bundled layouts
+    python src/render.py --layout swiss           # slug, name, or number (13)
+    python src/render.py --accent "#1d4ed8" --highlight "#ea580c"
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 import cvlib
+import layouts
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,7 +29,30 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--template", type=Path, default=cvlib.DEFAULT_TEMPLATE)
     parser.add_argument("--out", type=Path, default=Path("out/cv.html"))
     parser.add_argument("--check", action="store_true", help="validate the dataset and exit")
+    parser.add_argument("--layout", help="bundled layout: slug, name, or number (see --list-layouts)")
+    parser.add_argument("--list-layouts", action="store_true", help="list bundled layouts and exit")
+    parser.add_argument("--accent", help="accent colour as #rrggbb, overrides profile.yaml")
+    parser.add_argument("--highlight", help="highlight colour as #rrggbb, overrides profile.yaml")
     args = parser.parse_args(argv)
+
+    if args.list_layouts:
+        for item in layouts.discover():
+            print(f"{item['slug']:<18} {item['name']:<14} {item['description']}")
+        return 0
+
+    template = args.template
+    if args.layout:
+        item = layouts.find(args.layout)
+        if item is None:
+            print(f"unknown layout '{args.layout}'; try --list-layouts", file=sys.stderr)
+            return 2
+        template = item["template"]
+
+    colours = {"accent": args.accent, "highlight": args.highlight}
+    for key, value in colours.items():
+        if value is not None and not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+            print(f"--{key} must look like #1f4e5f, got '{value}'", file=sys.stderr)
+            return 2
 
     try:
         dataset = cvlib.load_dataset(args.data)
@@ -33,12 +61,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.manifest:
             manifest = cvlib.load_yaml(args.manifest) or {}
 
+        chosen = {key: value for key, value in colours.items() if value}
+        if chosen:
+            dataset["profile"].setdefault("theme", {}).update(chosen)
+
         achievements = sum(len(role["achievements"]) for role in dataset["roles"])
         if args.check:
             print(f"OK: {len(dataset['roles'])} role(s), {achievements} achievement(s)")
             return 0
 
-        html = cvlib.render_dataset(dataset, manifest, args.template)
+        html = cvlib.render_dataset(dataset, manifest, template)
     except cvlib.CVDatasetError as exc:
         print(exc, file=sys.stderr)
         return 2

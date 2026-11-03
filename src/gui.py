@@ -21,9 +21,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+import appearance
 import cvlib
+import layouts
 
-from PySide6.QtCore import QCoreApplication, QSize, Qt, QTimer, QUrl
+from PySide6.QtCore import QCoreApplication, QSettings, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QBrush, QColor, QDesktopServices, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -483,6 +485,137 @@ class RoleDialog(QDialog):
 # Preview
 # --------------------------------------------------------------------------
 
+class AppearanceDialog(QDialog):
+    """Accent and highlight colours, plus optional text, backdrop and font."""
+
+    changed = Signal(dict)
+
+    FALLBACK = {"text": "#1f2428", "desk": "#e5e7ea"}
+
+    def __init__(self, theme: dict[str, str], overrides: dict[str, str], parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Customize style")
+        self.values: dict[str, str] = {"accent": theme["accent"], "highlight": theme["highlight"]}
+        for key in appearance.KEYS:
+            if overrides.get(key):
+                self.values[key] = overrides[key]
+        self.start = dict(self.values)
+        self.memory = {key: overrides.get(key) or self.FALLBACK[key] for key in appearance.COLOR_KEYS}
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Changes show in the preview straight away. They apply to every layout."))
+        form = QFormLayout()
+
+        self.buttons: dict[str, QPushButton] = {}
+        self.default_checks: dict[str, QCheckBox] = {}
+
+        for key, label, hint in (
+            ("accent", "Accent", "Headings, rules, and links"),
+            ("highlight", "Highlight", "Bullets marked as important"),
+        ):
+            self.buttons[key] = self._color_button(key, hint)
+            form.addRow(label, self.buttons[key])
+
+        for key in appearance.COLOR_KEYS:
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            self.buttons[key] = self._color_button(key, appearance.HINTS[key])
+            check = QCheckBox("Layout default")
+            check.setChecked(key not in self.values)
+            check.toggled.connect(lambda on, k=key: self.toggle_default(k, on))
+            self.default_checks[key] = check
+            row_layout.addWidget(self.buttons[key], 1)
+            row_layout.addWidget(check)
+            form.addRow(appearance.LABELS[key], row)
+
+        self.font_combo = QComboBox()
+        self.font_combo.addItem("Layout default", "")
+        for label, stack in appearance.FONT_CHOICES:
+            self.font_combo.addItem(label, stack)
+        current_font = self.values.get("font", "")
+        if current_font and self.font_combo.findData(current_font) < 0:
+            self.font_combo.addItem("Current font", current_font)
+        self.font_combo.setCurrentIndex(max(self.font_combo.findData(current_font), 0))
+        self.font_combo.currentIndexChanged.connect(self.pick_font)
+        form.addRow(appearance.LABELS["font"], self.font_combo)
+        layout.addLayout(form)
+
+        row = QHBoxLayout()
+        reset = QPushButton("Reset text, backdrop, font")
+        reset.setToolTip("Go back to what the layout itself defines")
+        reset.clicked.connect(self.reset_extras)
+        row.addWidget(reset)
+        row.addStretch(1)
+        layout.addLayout(row)
+
+        box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        box.accepted.connect(self.accept)
+        box.rejected.connect(self.reject)
+        layout.addWidget(box)
+        self.refresh()
+
+    def _color_button(self, key: str, hint: str) -> QPushButton:
+        button = QPushButton()
+        button.setToolTip(hint)
+        button.setIconSize(QSize(16, 16))
+        button.setStyleSheet("text-align: left; padding: 4px 10px;")
+        button.clicked.connect(lambda _checked=False, k=key: self.pick(k))
+        return button
+
+    def refresh(self) -> None:
+        for key, button in self.buttons.items():
+            color = self.values.get(key) or self.memory.get(key, "#000000")
+            button.setIcon(swatch_icon(color))
+            button.setText("  " + color)
+            if key in self.default_checks:
+                button.setEnabled(not self.default_checks[key].isChecked())
+
+    def pick(self, key: str) -> None:
+        initial = self.values.get(key) or self.memory.get(key, "#000000")
+        color = QColorDialog.getColor(QColor(initial), self, self.windowTitle())
+        if not color.isValid():
+            return
+        self.values[key] = color.name()
+        if key in self.memory:
+            self.memory[key] = color.name()
+        self.refresh()
+        self.changed.emit(dict(self.values))
+
+    def toggle_default(self, key: str, on: bool) -> None:
+        if on:
+            self.values.pop(key, None)
+        else:
+            self.values[key] = self.memory[key]
+        self.refresh()
+        self.changed.emit(dict(self.values))
+
+    def pick_font(self, index: int) -> None:
+        stack = self.font_combo.itemData(index)
+        if stack:
+            self.values["font"] = stack
+        else:
+            self.values.pop("font", None)
+        self.changed.emit(dict(self.values))
+
+    def reset_extras(self) -> None:
+        for key in appearance.KEYS:
+            self.values.pop(key, None)
+        for check in self.default_checks.values():
+            check.blockSignals(True)
+            check.setChecked(True)
+            check.blockSignals(False)
+        self.font_combo.blockSignals(True)
+        self.font_combo.setCurrentIndex(0)
+        self.font_combo.blockSignals(False)
+        self.refresh()
+        self.changed.emit(dict(self.values))
+
+    def reject(self) -> None:
+        self.changed.emit(dict(self.start))
+        super().reject()
+
+
 class PreviewPane(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -578,6 +711,11 @@ class MainWindow(QMainWindow):
         self.template_path = cvlib.DEFAULT_TEMPLATE
         self.example: dict[str, Any] | None = None
 
+        # Layout and look are view settings kept per user, not written to the dataset.
+        self.settings = QSettings("CVBlocks", "CVSelector")
+        self.layout_slug = self.saved_layout()
+        self.appearance = appearance.loads(str(self.settings.value("appearance/json", "") or ""))
+
         self.setWindowTitle("CV Selector")
         self.resize(1360, 900)
         self._build_ui()
@@ -592,6 +730,21 @@ class MainWindow(QMainWindow):
         toolbar.setMovable(False)
         toolbar.setIconSize(QSize(16, 16))
         self.addToolBar(toolbar)
+
+        toolbar.addWidget(QLabel(" Style "))
+        self.layout_combo = QComboBox()
+        self.layout_combo.setMinimumWidth(170)
+        self.layout_combo.setToolTip("Layout of the CV in the preview and the export")
+        self.populate_layout_combo()
+        self.layout_combo.currentIndexChanged.connect(self.on_layout_selected)
+        toolbar.addWidget(self.layout_combo)
+
+        self.customize_button = QToolButton()
+        self.customize_button.setText("Customize…")
+        self.customize_button.setToolTip("Accent, highlight, text colour, backdrop, and font")
+        self.customize_button.clicked.connect(self.customize_style)
+        toolbar.addWidget(self.customize_button)
+        toolbar.addSeparator()
 
         self.accent_button = QToolButton()
         self.accent_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -659,11 +812,13 @@ class MainWindow(QMainWindow):
             self.edit_role_action,
             self.delete_role_action,
         ]
-        self.example_locked_widgets = [self.accent_button, self.highlight_button]
+        self.example_locked_widgets: list[QWidget] = []
 
         view_menu = menu.addMenu("&View")
         view_menu.addAction("Refresh preview", self.update_preview, "F5")
         view_menu.addAction("Open preview in browser", self.open_in_browser)
+        view_menu.addSeparator()
+        view_menu.addAction("Customize style…", self.customize_style)
 
         help_menu = menu.addMenu("&Help")
         help_menu.addAction("About", self.about)
@@ -784,6 +939,9 @@ class MainWindow(QMainWindow):
         else:
             self.setWindowTitle(f"CV Selector — {root}")
         self.update_example_state()
+        # An example brings its own layout; your own dataset uses the saved choice.
+        self.layout_slug = "" if example else self.saved_layout()
+        self.sync_layout_combo()
         self.refresh_theme_buttons()
         self.rebuild_sections()
         self.rebuild_tree()
@@ -992,18 +1150,98 @@ class MainWindow(QMainWindow):
                     visible_children += 1
             role_item.setHidden(visible_children == 0)
 
+    # ---------------- Layout and look ----------------
+
+    def saved_layout(self) -> str:
+        item = layouts.find(str(self.settings.value("layout/slug", "") or ""))
+        return item["slug"] if item else ""
+
+    def populate_layout_combo(self) -> None:
+        combo = self.layout_combo
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("Default layout", "")
+        combo.setItemData(0, "The template of the dataset (or of the loaded example)", Qt.ItemDataRole.ToolTipRole)
+        for item in layouts.discover():
+            combo.addItem(item["name"], item["slug"])
+            combo.setItemData(combo.count() - 1, item["description"], Qt.ItemDataRole.ToolTipRole)
+        combo.setCurrentIndex(max(combo.findData(self.layout_slug), 0))
+        combo.blockSignals(False)
+
+    def sync_layout_combo(self) -> None:
+        self.layout_combo.blockSignals(True)
+        self.layout_combo.setCurrentIndex(max(self.layout_combo.findData(self.layout_slug), 0))
+        self.layout_combo.blockSignals(False)
+
+    def on_layout_selected(self, index: int) -> None:
+        slug = self.layout_combo.itemData(index)
+        self.layout_slug = slug if isinstance(slug, str) else ""
+        self.settings.setValue("layout/slug", self.layout_slug)
+        self.update_preview()
+        self.statusBar().showMessage(f"Layout: {self.layout_combo.itemText(index)}", 4000)
+
+    def effective_template(self) -> Path:
+        if self.layout_slug:
+            item = layouts.find(self.layout_slug)
+            if item:
+                return item["template"]
+        return self.template_path
+
+    def render_html(self, manifest: dict[str, Any] | None = None) -> str:
+        if manifest is None:
+            manifest = self.current_manifest()
+        return cvlib.render_dataset(
+            self.dataset, manifest, self.effective_template(), self.appearance
+        )
+
+    def customize_style(self) -> None:
+        profile = self.dataset["profile"]
+        saved_theme = deepcopy(profile.get("theme"))
+        saved_dirty = self.profile_dirty
+        saved_look = dict(self.appearance)
+
+        dialog = AppearanceDialog(cvlib.theme_from(profile), self.appearance, self)
+        dialog.changed.connect(self.apply_appearance)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.settings.setValue("appearance/json", appearance.dumps(self.appearance))
+            return
+
+        # Cancelled: put back exactly what was there, including the dirty flag.
+        if saved_theme is None:
+            profile.pop("theme", None)
+        else:
+            profile["theme"] = saved_theme
+        self.profile_dirty = saved_dirty
+        self.appearance = saved_look
+        self.refresh_theme_buttons()
+        self.recolor_highlights()
+        self.update_preview()
+
+    def apply_appearance(self, values: dict[str, str]) -> None:
+        profile = self.dataset["profile"]
+        current = cvlib.theme_from(profile)
+        if any(values.get(key) != current[key] for key in ("accent", "highlight")):
+            theme = profile.setdefault("theme", dict(cvlib.DEFAULT_THEME))
+            for key in ("accent", "highlight"):
+                theme[key] = values.get(key, current[key])
+            if not self.example:
+                self.profile_dirty = True
+        self.appearance = appearance.clean({key: values.get(key) for key in appearance.KEYS})
+        self.refresh_theme_buttons()
+        self.recolor_highlights()
+        self.update_preview()
+
     # ---------------- Colours and highlighting ----------------
 
     def pick_color(self, key: str) -> None:
-        if self.example:
-            return
         theme = cvlib.theme_from(self.dataset["profile"])
         initial = QColor(theme[key])
         color = QColorDialog.getColor(initial, self, f"{key.capitalize()} colour")
         if not color.isValid():
             return
         self.dataset["profile"].setdefault("theme", dict(cvlib.DEFAULT_THEME))[key] = color.name()
-        self.profile_dirty = True
+        if not self.example:  # examples are read-only, so the colour only lives in memory
+            self.profile_dirty = True
         self.refresh_theme_buttons()
         self.recolor_highlights()
         self.update_preview()
@@ -1100,7 +1338,7 @@ class MainWindow(QMainWindow):
             return
         manifest = self.current_manifest()
         try:
-            html = cvlib.render_dataset(self.dataset, manifest, self.template_path)
+            html = self.render_html(manifest)
         except cvlib.CVDatasetError as exc:
             self.preview.set_message(str(exc))
             self.statusBar().showMessage(str(exc), 8000)
@@ -1120,7 +1358,7 @@ class MainWindow(QMainWindow):
         if not path:
             return
         try:
-            html = cvlib.render_dataset(self.dataset, self.current_manifest(), self.template_path)
+            html = self.render_html()
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             Path(path).write_text(html, encoding="utf-8")
         except (cvlib.CVDatasetError, OSError) as exc:
@@ -1144,7 +1382,7 @@ class MainWindow(QMainWindow):
 
     def open_in_browser(self) -> None:
         try:
-            html = cvlib.render_dataset(self.dataset, self.current_manifest(), self.template_path)
+            html = self.render_html()
         except cvlib.CVDatasetError as exc:
             QMessageBox.critical(self, "Cannot render", str(exc))
             return

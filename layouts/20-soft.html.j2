@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ profile.name }} — Curriculum Vitae</title>
+<style>
+  :root {
+    --accent: {{ theme.accent }};
+    --highlight: {{ theme.highlight }};
+    --ink: #1f2428;
+    --muted: #626b73;
+    --rule: #d6dade;
+    --tint: #f1f3f5;
+    --tint: color-mix(in srgb, var(--accent) 9%, #fff);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; line-height: 1.45; color: var(--ink); }
+  .sheet { width: 210mm; min-height: 297mm; margin: 18px auto; background: #fff; box-shadow: 0 2px 14px rgba(0, 0, 0, .18); }
+  a { color: inherit; text-decoration: none; }
+  h1, h2, h3, p { margin: 0; }
+  ul { margin: 0; padding-left: 17px; }
+  li { margin: 0 0 3px; }
+  li.is-highlight { color: var(--highlight); font-weight: 600; }
+  .plain { margin: 0; padding: 0; list-style: none; }
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .sheet { margin: 0; box-shadow: none; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  body { background: #e9ecf1; font: 10.3pt/1.48 "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  .sheet { padding: 12mm 14mm; border-radius: 6px; }
+  header { padding: 8mm 9mm; border-radius: 14px; background: #eef2f4; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, #fff), #fff); }
+  h1 { color: var(--accent); font-size: 27pt; line-height: 1.05; font-weight: 700; }
+  .headline { margin-top: 2px; font-size: 11.5pt; color: var(--muted); }
+  .contact { display: flex; flex-wrap: wrap; gap: 5px 7px; margin-top: 9px; font-size: 8.8pt; }
+  .contact a, .contact span { padding: 2px 10px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px var(--rule); }
+  h2 { margin: 18px 0 8px; color: var(--accent); font-size: 12pt; font-weight: 700; }
+  .summary p { margin-bottom: 6px; }
+  .job { margin-bottom: 13px; break-inside: avoid; }
+  .job-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .job h3 { font-size: 11.2pt; }
+  .job h3 span { color: var(--accent); }
+  .pill { padding: 1px 10px; border-radius: 999px; background: var(--tint); color: var(--accent); font-size: 8.6pt; font-weight: 600; white-space: nowrap; }
+  .scope { margin: 2px 0 4px; color: var(--muted); font-size: 9.4pt; }
+  .skills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .skill { margin: 0; padding: 7px 11px; border-radius: 10px; background: var(--tint); font-size: 9.3pt; }
+  .skill b { display: block; color: var(--accent); }
+  .skill span { display: block; }
+  .plain li { margin-bottom: 3px; font-size: 9.5pt; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header><h1>{{ profile.name }}</h1><p class="headline">{{ profile.headline }}</p><div class="contact">{% for item in contact %}{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}<span>{{ item.text }}</span>{% endif %}{% endfor %}</div></header>
+  {% if profile.summary %}<section class="summary"><h2>Profile</h2>{% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}</section>{% endif %}
+  <section>
+    <h2>Experience</h2>
+    {% for role in roles %}
+    <article class="job">
+      <div class="job-head"><h3>{{ role.title }} <span>· {{ role.company }}</span></h3><span class="pill">{{ role.start | month }} – {{ role.end | month }}</span></div>
+      {% if role.scope %}<p class="scope">{{ role.scope }}</p>{% endif %}
+      <ul>{% for a in role.achievements %}<li{% if a.get('highlight') %} class="is-highlight"{% endif %}>{{ a.text }}</li>{% endfor %}</ul>
+    </article>
+    {% endfor %}
+  </section>
+  {% if skills.categories %}<section><h2>Skills</h2><div class="skills">{% for cat in skills.categories %}<p class="skill"><b>{{ cat.name }}</b><span>{{ cat['items'] | join(', ') }}</span></p>{% endfor %}</div></section>{% endif %}
+  {% if education.entries %}<section><h2>Education</h2><ul class="plain">{% for entry in education.entries %}<li><b>{{ entry.degree }}</b><br>{{ entry.institution }}, {{ entry.year }}</li>{% endfor %}</ul></section>{% endif %}
+  {% if extras_items %}<section><h2>Extras</h2><ul class="plain">{% if extras.certifications %}<li><b>Certifications:</b> {{ extras.certifications | join('; ') }}</li>{% endif %}{% if extras.open_source %}<li><b>Open source:</b> {{ extras.open_source | join('; ') }}</li>{% endif %}{% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}{% if extras.languages %}<li><b>Languages:</b> {{ extras.languages | join(', ') }}</li>{% endif %}</ul></section>{% endif %}
+</div>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ profile.name }} — CV</title>
+<style>
+  :root {
+    --accent: {{ theme.accent }};
+    --highlight: {{ theme.highlight }};
+    --gold: #8a6d3b;
+    --ink: #23201c;
+    --muted: #746c62;
+    --rule: #d8d0c4;
+    --paper: #fdfbf7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e8e2d8;
+    color: var(--ink);
+    font-family: Garamond, "EB Garamond", "Iowan Old Style", Georgia, serif;
+    font-size: 10.8pt;
+    line-height: 1.45;
+  }
+  .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 18px auto;
+    padding: 16mm 18mm;
+    background: var(--paper);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, .18);
+  }
+  header { text-align: center; }
+  .name {
+    margin: 0;
+    font-size: 31pt;
+    font-weight: normal;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .headline {
+    margin: 7px 0 9px;
+    color: var(--gold);
+    font-size: 9pt;
+    font-variant: small-caps;
+    letter-spacing: .22em;
+  }
+  .rule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 auto 9px;
+    color: var(--gold);
+  }
+  .rule::before, .rule::after { content: ""; flex: 1; border-top: 1px solid var(--rule); }
+  .rule span { font-size: 8pt; letter-spacing: .2em; }
+  .contact { color: var(--muted); font-size: 8.8pt; }
+  .contact > * + *::before { content: "  ·  "; color: var(--rule); }
+  .contact a { color: var(--muted); text-decoration: none; }
+  .lede {
+    margin: 14px 0 12px;
+    padding: 9px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    color: #4c463e;
+    font-size: 10.5pt;
+    font-style: italic;
+    text-align: center;
+  }
+  .lede p { margin: 0 0 4px; }
+  .lede p:last-child { margin: 0; }
+  .columns { display: grid; grid-template-columns: 1fr 54mm; gap: 10mm; }
+  h2 {
+    margin: 12px 0 6px;
+    color: var(--gold);
+    font-size: 9pt;
+    font-variant: small-caps;
+    font-weight: normal;
+    letter-spacing: .18em;
+  }
+  h2:first-child { margin-top: 0; }
+  h2::after { content: ""; display: block; width: 14mm; margin-top: 3px; border-bottom: 1px solid var(--rule); }
+  .job { margin: 0 0 12px; break-inside: avoid; }
+  .job-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .job-title { margin: 0; font-size: 11.8pt; font-weight: normal; }
+  .job-title em { color: var(--gold); font-style: italic; }
+  .job-meta { color: var(--muted); font-size: 8.8pt; font-style: italic; white-space: nowrap; }
+  .scope { margin: 1px 0 4px; color: var(--muted); font-size: 9.3pt; font-style: italic; }
+  ul { margin: 0; padding-left: 16px; }
+  li { margin: 0 0 3px; }
+  li.is-highlight { color: var(--highlight); font-weight: bold; }
+  .side { padding-left: 7mm; border-left: 1px solid var(--rule); }
+  .skill { margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px dotted var(--rule); font-size: 9pt; }
+  .skill b { display: block; color: var(--gold); font-size: 8.3pt; font-variant: small-caps; font-weight: normal; letter-spacing: .08em; }
+  .plain { margin: 0; padding: 0; list-style: none; font-size: 9pt; }
+  .plain li { margin: 0 0 4px; }
+  @page { size: A4; margin: 16mm 18mm; }
+  @media print {
+    body { background: #fff; }
+    .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header>
+    <h1 class="name">{{ profile.name }}</h1>
+    <p class="headline">{{ profile.headline }}</p>
+    <div class="rule"><span>CURRICULUM VITAE</span></div>
+    <div class="contact">
+      {% for item in contact %}{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}<span>{{ item.text }}</span>{% endif %}{% endfor %}
+    </div>
+  </header>
+
+  {% if profile.summary %}
+  <section class="lede">
+    {% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  <div class="columns">
+    <section>
+      <h2>Experience</h2>
+      {% for role in roles %}
+      <article class="job">
+        <div class="job-head">
+          <h3 class="job-title">{{ role.title }} <em>· {{ role.company }}</em></h3>
+          <div class="job-meta">{{ role.meta }}</div>
+        </div>
+        {% if role.scope %}<p class="scope">{{ role.scope }}</p>{% endif %}
+        <ul>
+          {% for a in role.achievements %}<li{% if a.get('highlight') %} class="is-highlight"{% endif %}>{{ a.text }}</li>{% endfor %}
+        </ul>
+      </article>
+      {% endfor %}
+    </section>
+
+    <aside class="side">
+      {% if skills.categories %}
+      <h2>Skills</h2>
+      {% for cat in skills.categories %}
+      <p class="skill"><b>{{ cat.name }}</b>{{ cat['items'] | join(', ') }}</p>
+      {% endfor %}
+      {% endif %}
+
+      {% if education.entries %}
+      <h2>Education</h2>
+      <ul class="plain">
+        {% for entry in education.entries %}
+        <li><b>{{ entry.degree }}</b><br>{{ entry.institution }}, {{ entry.year }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if extras_items %}
+      <h2>Extras</h2>
+      <ul class="plain">
+        {% if extras.certifications %}<li>{{ extras.certifications | join('; ') }}</li>{% endif %}
+        {% if extras.open_source %}<li>{{ extras.open_source | join('; ') }}</li>{% endif %}
+        {% if extras.talks %}<li>{{ extras.talks | join('; ') }}</li>{% endif %}
+        {% if extras.languages %}<li>{{ extras.languages | join(', ') }}</li>{% endif %}
+      </ul>
+      {% endif %}
+    </aside>
+  </div>
+</main>
+</body>
+</html>

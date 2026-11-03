@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ profile.name }} — CV</title>
+<style>
+  :root {
+    --accent: {{ theme.accent }};
+    --highlight: {{ theme.highlight }};
+    --ink: #21282d;
+    --muted: #6a747a;
+    --rule: #d7dde1;
+    --wash: #f4f6f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e4e8e9;
+    color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.2pt;
+    line-height: 1.42;
+  }
+  .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 18px auto;
+    padding: 13mm 15mm;
+    background: #fff;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, .2);
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    padding-bottom: 9px;
+    border-bottom: 3px solid var(--accent);
+  }
+  .name { margin: 0; font-size: 27pt; line-height: 1; letter-spacing: -.03em; color: var(--accent); }
+  .headline { margin: 4px 0 0; color: var(--muted); font-size: 9.3pt; letter-spacing: .08em; text-transform: uppercase; }
+  .contact { text-align: right; color: var(--muted); font-size: 8.3pt; line-height: 1.55; }
+  .contact a { color: var(--muted); text-decoration: none; }
+  .summary {
+    margin: 9px 0;
+    padding: 7px 10px;
+    background: var(--wash);
+    border-radius: 4px;
+    font-size: 9.2pt;
+  }
+  .summary p { margin: 0 0 4px; }
+  .summary p:last-child { margin: 0; }
+  h2 {
+    margin: 14px 0 7px;
+    color: var(--accent);
+    font-size: 8.5pt;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  h2:first-child { margin-top: 0; }
+  .card {
+    margin: 0 0 8px;
+    padding: 8px 11px 8px 13px;
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+    background: #fff;
+    break-inside: avoid;
+  }
+  .job-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .job-title { margin: 0; font-size: 11pt; }
+  .job-title span { color: var(--accent); }
+  .job-meta { color: var(--muted); font-size: 8.2pt; white-space: nowrap; }
+  .scope { margin: 1px 0 4px; color: var(--muted); font-size: 8.8pt; }
+  ul { margin: 0; padding-left: 15px; }
+  li { margin: 0 0 2px; }
+  li.is-highlight { color: var(--highlight); font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 9px; }
+  .chip {
+    padding: 2px 7px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--wash);
+    font-size: 8.1pt;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm 10mm; }
+  .grid p { margin: 0 0 5px; font-size: 9pt; }
+  .grid b { color: var(--accent); }
+  .plain { margin: 0; padding: 0; list-style: none; font-size: 9pt; }
+  .plain li { margin: 0 0 4px; }
+  @page { size: A4; margin: 13mm 15mm; }
+  @media print {
+    body { background: #fff; }
+    .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header>
+    <div>
+      <h1 class="name">{{ profile.name }}</h1>
+      <p class="headline">{{ profile.headline }}</p>
+    </div>
+    <div class="contact">
+      {% for item in contact %}{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}{{ item.text }}{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}
+    </div>
+  </header>
+
+  {% if profile.summary %}
+  <div class="summary">
+    {% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}
+  </div>
+  {% endif %}
+
+  <h2>Experience</h2>
+  {% for role in roles %}
+  <article class="card">
+    <div class="job-head">
+      <h3 class="job-title">{{ role.title }} <span>· {{ role.company }}</span></h3>
+      <div class="job-meta">{{ role.meta }}</div>
+    </div>
+    {% if role.scope %}<p class="scope">{{ role.scope }}</p>{% endif %}
+    <ul>
+      {% for a in role.achievements %}<li{% if a.get('highlight') %} class="is-highlight"{% endif %}>{{ a.text }}</li>{% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+
+  {% if skills.categories %}
+  <h2>Skills</h2>
+  {% for cat in skills.categories %}
+  <div class="chips">
+    {% for item in cat['items'] %}<span class="chip">{{ item }}</span>{% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="grid">
+    {% if education.entries %}
+    <section>
+      <h2>Education</h2>
+      <ul class="plain">
+        {% for entry in education.entries %}
+        <li><b>{{ entry.degree }}</b><br>{{ entry.institution }}, {{ entry.year }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if extras_items %}
+    <section>
+      <h2>Extras</h2>
+      <ul class="plain">
+        {% if extras.certifications %}<li>{{ extras.certifications | join('; ') }}</li>{% endif %}
+        {% if extras.open_source %}<li>{{ extras.open_source | join('; ') }}</li>{% endif %}
+        {% if extras.talks %}<li>{{ extras.talks | join('; ') }}</li>{% endif %}
+        {% if extras.languages %}<li>{{ extras.languages | join(', ') }}</li>{% endif %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+</main>
+</body>
+</html>

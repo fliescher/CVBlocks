@@ -71,9 +71,12 @@ cv-data/                       the dataset — source of truth
   applications/<slug>/         manifest + generated output per application
   notes/                       free-form Markdown, never parsed
 src/cvlib.py                   loader, validator, selection, writer (no Qt)
+src/layouts.py                 finds the bundled layouts in layouts/ (no Qt)
+src/appearance.py              optional text/backdrop/font overrides (no Qt)
 src/render.py                  command-line renderer
 src/gui.py                     PySide6 desktop app
 templates/cv.html.j2           default single-column A4 template (Jinja2)
+layouts/                       20 selectable layouts: index.yaml + NN-name.html.j2
 examples/                      10 bundled layouts with a shared fictional dataset
   data/                        sample profile, roles, skills, education, extras
   01-classic/ … 10-elegant/    example.yaml + template.html.j2 per layout
@@ -250,6 +253,9 @@ Rules:
 | `--data` | `cv-data` | dataset directory |
 | `--manifest` | none | selection manifest; omit for everything |
 | `--template` | `templates/cv.html.j2` | Jinja2 template |
+| `--layout` | none | bundled layout by slug, name, or number, e.g. `13`; wins over `--template` |
+| `--list-layouts` | off | list the bundled layouts and exit |
+| `--accent`, `--highlight` | from `profile.yaml` | colours as `#rrggbb` for this render |
 | `--out` | `out/cv.html` | output HTML file |
 | `--check` | off | validate the dataset and exit |
 
@@ -285,6 +291,27 @@ star in the tree and render in the highlight colour. Colours are stored in
 `profile.yaml` under `theme`; the flag is stored per achievement as
 `highlight: true`, so both survive a restart and show up in the CLI render too.
 
+**Layouts** — the **Style** dropdown in the toolbar switches the whole layout
+of the preview and of `Export HTML…`. `Default layout` is the template of your
+dataset (or of the loaded example); below it are the 20 bundled layouts from
+`layouts/`: the ten from `examples/` plus ten more (Bold sidebar, Right rail,
+Swiss, Split header, Ribbon, Monogram, Frame, Newspaper, Ledger, Soft). The
+choice is a view setting, remembered per user and never written to the dataset.
+Every layout takes the accent and highlight colours.
+
+**Customize…** (toolbar or `View`) opens one dialog for the look of whichever
+layout is active: accent, highlight, and three optional overrides, namely body
+text colour, screen backdrop, and font. Each override can stay on `Layout
+default`. Changes preview live and `Cancel` puts everything back. Accent and
+highlight are the same values as the two toolbar swatches, so they are saved to
+`profile.yaml` with `Save`; text, backdrop, and font are remembered per user.
+
+To add a layout, drop `NN-name.html.j2` into `layouts/` and add an entry to
+`layouts/index.yaml`. A layout is a standalone Jinja2 template; use
+`{{ theme.accent }}` and `{{ theme.highlight }}` so the colour pickers work.
+From the command line: `python src/render.py --list-layouts`, then
+`python src/render.py --layout swiss --accent "#1d4ed8"`.
+
 **Sections** — unlike the search and theme filters, the checkboxes on the
 Sections tab are part of the CV selection: skill categories, Education, and the
 extras block (certifications, open source, talks, languages). They never delete
@@ -301,8 +328,9 @@ its achievement list; achievements can be added, removed, and reordered.
 
 **Examples** — example mode loads the shared fictional dataset from
 `examples/data`. It is read-only: selection, section checkboxes, preview, and
-`Export HTML…` still work, but `Save`, `Save selection as…`, the colour
-pickers, `Mark important`, and the editing actions are disabled. Use
+`Export HTML…` still work, and so do the Style dropdown and the colour pickers
+(their colours stay in memory only). `Save`, `Save selection as…`,
+`Mark important`, and the editing actions are disabled. Use
 `File → Open dataset…` to return to your own data and the default template.
 
 **Saving** — dataset edits are not written until `Save` (`Ctrl+S`), including a

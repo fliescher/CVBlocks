@@ -12,6 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+import appearance
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from jsonschema import Draft202012Validator
@@ -239,7 +240,16 @@ def extras_items(extras: dict[str, Any], manifest: dict[str, Any] | None) -> lis
     return items
 
 
-def build_context(dataset: dict[str, Any], manifest: dict[str, Any] | None) -> dict[str, Any]:
+def build_context(
+    dataset: dict[str, Any],
+    manifest: dict[str, Any] | None,
+    overrides: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Build the template context.
+
+    `overrides` are optional text/desk/font values from appearance.py. They are
+    added to the Jinja `theme` variable and applied to the page after rendering.
+    """
     profile = dataset["profile"]
     include = _include(manifest)
 
@@ -254,7 +264,7 @@ def build_context(dataset: dict[str, Any], manifest: dict[str, Any] | None) -> d
     return {
         "profile": profile,
         "contact": contact_items(profile),
-        "theme": theme_from(profile),
+        "theme": {**theme_from(profile), **appearance.clean(overrides)},
         "skills": select_skills(dataset["skills"], manifest),
         "roles": roles,
         "education": education,
@@ -276,15 +286,19 @@ def render_html(context: dict[str, Any], template_path: Path | None = None) -> s
     )
     environment.filters["month"] = format_month
     template = environment.get_template(template_path.name)
-    return template.render(**context)
+    html = template.render(**context)
+    if appearance.has_overrides(context["theme"]):
+        html = appearance.inject(html, context["theme"])
+    return html
 
 
 def render_dataset(
     dataset: dict[str, Any],
     manifest: dict[str, Any] | None = None,
     template_path: Path | None = None,
+    overrides: dict[str, str] | None = None,
 ) -> str:
-    return render_html(build_context(dataset, manifest), template_path)
+    return render_html(build_context(dataset, manifest, overrides), template_path)
 
 
 # --------------------------------------------------------------------------
