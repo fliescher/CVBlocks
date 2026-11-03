@@ -7,6 +7,8 @@ a tailored HTML CV, print it to PDF.
 No database, no lock-in. Every fact is a text file you can read, diff, and
 edit by hand — or through the PySide6 desktop app, which writes the same files.
 
+![alt text](screenshot_example.png "screenshot_example.png")
+
 ## Requirements
 
 - Python 3.10 or newer
