@@ -1,0 +1,3 @@
+name: "Timeline"
+description: "A vertical timeline with dates in the margin and a clear progression through roles."
+template: "template.html.j2"

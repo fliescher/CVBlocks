@@ -1,0 +1,19 @@
+id: kestrel-backend
+company: Kestrel Analytics
+title: Backend Engineer
+start: "2014-09"
+end: "2018-07"
+location: Utrecht, NL
+scope: >
+  Analytics ingestion for retail clients; Python, Redis, Docker. Small team,
+  broad ownership.
+achievements:
+  - id: ingestion-pipeline
+    themes: [scale, data]
+    text: >
+      Rebuilt the ingestion pipeline to handle 4x volume without adding
+      headcount.
+  - id: on-call
+    themes: [reliability]
+    text: >
+      Introduced runbooks and alert tuning that reduced pages by 60%.

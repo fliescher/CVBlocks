@@ -1,0 +1,3 @@
+name: "Editorial"
+description: "Magazine-inspired display type, a pull-quote summary, and generous serif body copy."
+template: "template.html.j2"

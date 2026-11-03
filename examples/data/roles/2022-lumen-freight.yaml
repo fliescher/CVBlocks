@@ -1,0 +1,31 @@
+id: lumen-staff-platform
+company: Lumen Freight
+title: Staff Platform Engineer
+start: "2022-04"
+end: null
+location: Rotterdam, NL (hybrid)
+scope: >
+  Freight visibility platform: 120 services, 45 engineers, 9k requests per
+  second at peak. Owned delivery tooling, reliability, and platform cost.
+achievements:
+  - id: delivery-throughput
+    themes: [delivery, leadership]
+    text: >
+      Cut lead time from 12 days to 2.5 by splitting a monorepo into deployable
+      services and introducing trunk-based delivery.
+    highlight: true
+  - id: cost-reduction
+    themes: [cost, scale]
+    text: >
+      Reduced compute spend 38% by right-sizing workloads, fixing noisy
+      neighbours, and moving batch jobs to spot capacity.
+  - id: incident-response
+    themes: [reliability]
+    text: >
+      Built an incident command program that cut mean time to recover from 74
+      to 21 minutes across 14 teams.
+  - id: mentoring
+    themes: [mentoring]
+    text: >
+      Mentored six engineers to senior; three now lead platform teams of their
+      own.

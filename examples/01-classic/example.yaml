@@ -1,0 +1,3 @@
+name: "Classic"
+description: "Traditional single column with serif type, ruled headings, and a centred header."
+template: "template.html.j2"

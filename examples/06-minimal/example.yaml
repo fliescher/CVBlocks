@@ -1,0 +1,3 @@
+name: "Minimal"
+description: "Airy and monochrome, with hairline rules, small type, and almost no chrome."
+template: "template.html.j2"

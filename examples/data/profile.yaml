@@ -1,0 +1,26 @@
+name: "Jordan Avery"
+headline: "Staff Platform Engineer"
+location: "Rotterdam, Netherlands · Remote (EU)"
+email: "jordan.avery@example.com"
+phone: "+31 6 1234 5678"
+
+theme:
+  accent: "#1f4e5f"
+  highlight: "#b45309"
+
+links:
+  - label: "github.com/jordanavery"
+    url: "https://github.com/jordanavery"
+  - label: "linkedin.com/in/jordanavery"
+    url: "https://linkedin.com/in/jordanavery"
+
+summary:
+  - >
+    Platform engineer with 14 years building and operating systems that other
+    engineers depend on. I like the unglamorous work: making deploys boring,
+    making incidents shorter, and leaving teams with fewer moving parts.
+  - >
+    Currently staff engineer on a freight visibility platform with 120 services.
+    Previously led a patient-records migration and an analytics ingestion
+    rewrite. Comfortable moving between architecture, hands-on debugging, and
+    mentoring.

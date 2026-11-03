@@ -1,0 +1,26 @@
+id: northwind-senior-backend
+company: Northwind Health
+title: Senior Backend Engineer
+start: "2018-08"
+end: "2022-03"
+location: Berlin, DE
+scope: >
+  Patient records API for 2.4M users. Go, PostgreSQL, Kafka, and a lot of
+  careful change management.
+achievements:
+  - id: records-migration
+    themes: [migration, reliability]
+    text: >
+      Led a zero-downtime migration of 1.8 TB of patient records from a legacy
+      Oracle schema to PostgreSQL.
+    highlight: true
+  - id: audit-trail
+    themes: [security, compliance]
+    text: >
+      Designed an append-only audit trail that passed GDPR review and reduced
+      investigation time by 70%.
+  - id: api-latency
+    themes: [performance]
+    text: >
+      Cut p95 API latency from 640 ms to 190 ms by removing N+1 queries and
+      adding request-scoped caching.

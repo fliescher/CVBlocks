@@ -1,0 +1,3 @@
+name: "Technical"
+description: "Monospace labels, key/value skills, and terminal-inspired section markers."
+template: "template.html.j2"

@@ -1,0 +1,3 @@
+name: "Sidebar"
+description: "A light sidebar for contact, skills, and education, with experience in the main column."
+template: "template.html.j2"

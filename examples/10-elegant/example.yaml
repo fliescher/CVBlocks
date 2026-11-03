@@ -1,0 +1,3 @@
+name: "Elegant"
+description: "A centred serif name, a narrow contact rail, small caps, and dotted leaders."
+template: "template.html.j2"

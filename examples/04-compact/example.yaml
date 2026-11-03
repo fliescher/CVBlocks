@@ -1,0 +1,3 @@
+name: "Compact"
+description: "A dense two-column one-pager for experienced hires who need every line to count."
+template: "template.html.j2"

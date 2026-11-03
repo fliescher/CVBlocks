@@ -1,0 +1,19 @@
+id: meridian-junior
+company: Meridian Software
+title: Junior Software Engineer
+start: "2012-07"
+end: "2014-08"
+location: Amsterdam, NL
+scope: >
+  B2B invoicing product; PHP, MySQL. First job out of university.
+achievements:
+  - id: invoice-automation
+    themes: [automation]
+    text: >
+      Automated invoice reconciliation, saving the finance team 20 hours per
+      month.
+  - id: test-coverage
+    themes: [quality]
+    text: >
+      Raised test coverage from 31% to 78% and set up the company's first CI
+      pipeline.

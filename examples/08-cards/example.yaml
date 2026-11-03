@@ -1,0 +1,3 @@
+name: "Cards"
+description: "Each role in its own card, with a grid of skill chips and a light grey canvas."
+template: "template.html.j2"
