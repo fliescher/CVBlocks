@@ -18,6 +18,12 @@ edit by hand — or through the PySide6 desktop app, which writes the same files
   install the app still runs and can open the preview in your browser (see
   Troubleshooting).
 
+## Future Features
+- [ ] categories for experience, core skills, education, certifications & trainings, open source projects, hobbies, languages selected projects (optional)
+- [ ] one action or button to add/edit/delete not only role but also skills, education, certifications,...
+- [ ] provide same layout for Cover Letter
+- [ ] 
+  
 ## Quick start
 
 There are 3 python scripts that can be run on Linux/MacOS as well as Windows with the following command from the Terminal/Powershell:
