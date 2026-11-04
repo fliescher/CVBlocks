@@ -1,9 +1,0 @@
-categories:
-  - name: Languages
-    items: [Go, Python, TypeScript, SQL]
-  - name: Platform
-    items: [Kubernetes, Terraform, AWS, PostgreSQL]
-  - name: Reliability
-    items: [SLOs, OpenTelemetry, incident command, capacity planning]
-  - name: Leadership
-    items: [technical strategy, mentoring, hiring, design review]

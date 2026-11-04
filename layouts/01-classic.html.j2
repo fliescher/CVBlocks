@@ -150,6 +150,8 @@
     <ul class="plain-list">
       {% if extras.certifications %}<li><span class="label">Certifications:</span> {{ extras.certifications | join('; ') }}</li>{% endif %}
       {% if extras.open_source %}<li><span class="label">Open source:</span> {{ extras.open_source | join('; ') }}</li>{% endif %}
+      {% if extras.projects %}<li><span class="label">Projects:</span> {{ extras.projects | join('; ') }}</li>{% endif %}
+      {% if extras.hobbies %}<li><span class="label">Hobbies:</span> {{ extras.hobbies | join('; ') }}</li>{% endif %}
       {% if extras.talks %}<li><span class="label">Talks:</span> {{ extras.talks | join('; ') }}</li>{% endif %}
       {% if extras.languages %}<li><span class="label">Languages:</span> {{ extras.languages | join(', ') }}</li>{% endif %}
     </ul>

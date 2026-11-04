@@ -8,7 +8,7 @@ Each directory contains:
 
 ```
 examples/
-  data/                       shared fictional dataset (profile, roles, schemas)
+  data/                       shared fictional dataset (profile, roles, all categories, schemas)
   01-classic/
     example.yaml              display name and description for the GUI
     template.html.j2          standalone Jinja2 template
@@ -35,12 +35,14 @@ examples/
 1. Start the app from the repository root:
    `.venv/bin/python src/gui.py`
 2. Choose `File → Load example…` and pick a layout.
-3. Select roles and bullets and use `Export HTML…` to try the layout.
+3. Select roles, bullets, and category items in the Experience and Library
+   tabs, then use `Export HTML…` to try the layout.
 
-Example mode is read-only: the app loads `examples/data` so you can explore the
-selection and section checkboxes, but `Save`, `Save selection as…`, the colour
-pickers, `Mark important`, and the editing actions are disabled. Use
-`File → Open dataset…` to return to your own dataset and the default template.
+Example mode is read-only: the app loads `examples/data` so you can explore
+the selection, the Library checkboxes, layouts, theme presets, and colours, but
+`Save`, `Save selection as…`, `Add bullet`, `Mark important`, and the editing
+actions are disabled. Use `File → Open dataset…` to return to your own dataset
+and the default template.
 
 ## Render an example from the command line
 

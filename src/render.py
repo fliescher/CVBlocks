@@ -18,6 +18,7 @@ import re
 import sys
 from pathlib import Path
 
+import categories
 import cvlib
 import layouts
 
@@ -66,8 +67,14 @@ def main(argv: list[str] | None = None) -> int:
             dataset["profile"].setdefault("theme", {}).update(chosen)
 
         achievements = sum(len(role["achievements"]) for role in dataset["roles"])
+        category_items = sum(
+            len(dataset[key]) for key in categories.CATEGORY_ORDER
+        )
         if args.check:
-            print(f"OK: {len(dataset['roles'])} role(s), {achievements} achievement(s)")
+            print(
+                f"OK: {len(dataset['roles'])} role(s), {achievements} achievement(s), "
+                f"{category_items} category item(s)"
+            )
             return 0
 
         html = cvlib.render_dataset(dataset, manifest, template)
@@ -78,11 +85,21 @@ def main(argv: list[str] | None = None) -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(html, encoding="utf-8")
 
-    context_roles = cvlib.select_roles(dataset["roles"], manifest)
-    rendered_achievements = sum(len(role["achievements"]) for role in context_roles)
+    context = cvlib.build_context(dataset, manifest)
+    rendered_achievements = sum(len(role["achievements"]) for role in context["roles"])
+    rendered_items = (
+        sum(len(category["items"]) for category in context["skills"]["categories"])
+        + len(context["education"]["entries"])
+        + sum(
+            len(values)
+            for key, values in context["extras"].items()
+            if key != "talks"
+        )
+    )
     print(
         f"wrote {args.out} "
-        f"({len(context_roles)} role(s), {rendered_achievements} achievement(s))"
+        f"({len(context['roles'])} role(s), {rendered_achievements} achievement(s), "
+        f"{rendered_items} category item(s))"
     )
     return 0
 

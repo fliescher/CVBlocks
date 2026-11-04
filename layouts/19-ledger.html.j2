@@ -78,7 +78,7 @@
   {% endif %}
   <div class="two">
     {% if education.entries %}<section><h2>Education</h2><ul class="plain">{% for entry in education.entries %}<li><b>{{ entry.degree }}</b><br>{{ entry.institution }}, {{ entry.year }}</li>{% endfor %}</ul></section>{% endif %}
-    {% if extras_items %}<section><h2>Extras</h2><ul class="plain">{% if extras.certifications %}<li><b>Certifications:</b> {{ extras.certifications | join('; ') }}</li>{% endif %}{% if extras.open_source %}<li><b>Open source:</b> {{ extras.open_source | join('; ') }}</li>{% endif %}{% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}{% if extras.languages %}<li><b>Languages:</b> {{ extras.languages | join(', ') }}</li>{% endif %}</ul></section>{% endif %}
+    {% if extras_items %}<section><h2>Extras</h2><ul class="plain">{% if extras.certifications %}<li><b>Certifications:</b> {{ extras.certifications | join('; ') }}</li>{% endif %}{% if extras.open_source %}<li><b>Open source:</b> {{ extras.open_source | join('; ') }}</li>{% endif %}{% if extras.projects %}<li><b>Projects:</b> {{ extras.projects | join('; ') }}</li>{% endif %}{% if extras.hobbies %}<li><b>Hobbies:</b> {{ extras.hobbies | join('; ') }}</li>{% endif %}{% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}{% if extras.languages %}<li><b>Languages:</b> {{ extras.languages | join(', ') }}</li>{% endif %}</ul></section>{% endif %}
   </div>
 </div>
 </body>

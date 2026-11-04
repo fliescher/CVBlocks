@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Core skill",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "group", "text"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Stable slug, unique within core-skills/."
+    },
+    "group": { "type": "string", "description": "Row label, e.g. Languages or Platform." },
+    "text": { "type": "string", "description": "The skill itself, e.g. Go." }
+  }
+}

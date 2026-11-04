@@ -3,21 +3,16 @@
   "title": "Education",
   "type": "object",
   "additionalProperties": false,
-  "required": ["entries"],
+  "required": ["id", "degree", "institution", "year"],
   "properties": {
-    "entries": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["degree", "institution", "year"],
-        "properties": {
-          "degree": { "type": "string" },
-          "institution": { "type": "string" },
-          "year": { "type": "string" },
-          "location": { "type": "string" }
-        }
-      }
-    }
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Stable slug, unique within education/."
+    },
+    "degree": { "type": "string" },
+    "institution": { "type": "string" },
+    "year": { "type": "string" },
+    "location": { "type": "string" }
   }
 }

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Selected project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Stable slug, unique within projects/."
+    },
+    "name": { "type": "string" },
+    "role": { "type": "string" },
+    "year": { "type": "string" },
+    "url": { "type": "string" },
+    "text": { "type": "string" }
+  }
+}

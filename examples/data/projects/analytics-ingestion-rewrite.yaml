@@ -1,0 +1,5 @@
+id: analytics-ingestion-rewrite
+name: Analytics ingestion rewrite
+role: Backend lead
+year: '2017'
+text: Rebuilt retail analytics ingestion to handle 4x volume without adding headcount.

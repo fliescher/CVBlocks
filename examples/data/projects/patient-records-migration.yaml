@@ -1,0 +1,5 @@
+id: patient-records-migration
+name: Patient records migration
+role: Migration lead
+year: '2021'
+text: Moved 1.8 TB of records from Oracle to PostgreSQL with no downtime.

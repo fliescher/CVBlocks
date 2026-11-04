@@ -20,6 +20,7 @@ except ImportError:
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 import appearance  # noqa: E402
+import categories  # noqa: E402
 import cvlib  # noqa: E402
 import layouts  # noqa: E402
 
@@ -45,10 +46,29 @@ dataset = {
         "summary": ["First paragraph.", "Second paragraph."],
         "theme": {"accent": "#123456", "highlight": "#654321"},
     },
-    "skills": {"categories": [{"name": "Languages", "items": ["Go", "Python"]},
-                               {"name": "Platform", "items": ["Kubernetes"]}]},
-    "education": {"entries": [{"degree": "BSc", "institution": "Utrecht", "year": 2012}]},
-    "extras": {"certifications": ["CKA"], "open_source": ["pgqueue"], "talks": ["KubeCon"], "languages": ["English"]},
+    "core_skills": [
+        {"id": "go", "group": "Languages", "text": "Go"},
+        {"id": "python", "group": "Languages", "text": "Python"},
+        {"id": "kubernetes", "group": "Platform", "text": "Kubernetes"},
+    ],
+    "education": [
+        {"id": "bsc", "degree": "BSc", "institution": "Utrecht", "year": "2012"},
+    ],
+    "certifications": [
+        {"id": "cka", "title": "CKA", "issuer": "CNCF", "year": "2023", "kind": "certification"},
+    ],
+    "open_source": [
+        {"id": "pgqueue", "name": "pgqueue", "role": "Maintainer", "text": "Queue", "url": ""},
+    ],
+    "hobbies": [
+        {"id": "cycling", "name": "Cycling", "text": "Weekend rides"},
+    ],
+    "languages": [
+        {"id": "english", "language": "English", "level": "C2"},
+    ],
+    "projects": [
+        {"id": "billing", "name": "Billing rewrite", "role": "Lead", "year": "2025", "text": "Project text.", "url": ""},
+    ],
     "roles": [
         {"id": "a", "company": "Lumen", "title": "Staff Engineer", "start": "2022-04", "end": None,
          "location": "Rotterdam", "scope": "Scope text.",
@@ -65,9 +85,54 @@ for item in items:
     assert "#123456" in html and "#654321" in html, f"{slug}: colours not applied"
     assert "Jordan Avery" in html and "Highlighted bullet." in html and "Lumen" in html, slug
     assert "is-highlight" in html, f"{slug}: highlight class missing"
+    assert "Cycling" in html and "Billing rewrite" in html, (
+        f"{slug}: hobbies or selected projects missing"
+    )
     assert "cv-appearance" not in html, slug
     assert "{{" not in html and "{%" not in html, f"{slug}: unrendered Jinja"
 print("all 20 layouts render with the profile colours")
+
+context = cvlib.build_context(dataset, None)
+assert [category["name"] for category in context["skills"]["categories"]] == [
+    "Languages", "Platform"
+]
+assert context["education"]["entries"][0]["degree"] == "BSc"
+assert context["extras"]["certifications"] == ["CKA — CNCF (2023)"]
+assert context["extras"]["hobbies"] == ["Cycling — Weekend rides"]
+assert context["extras"]["languages"] == ["English (C2)"]
+assert context["projects"][0]["name"] == "Billing rewrite"
+assert "Billing rewrite" in cvlib.render_dataset(dataset)
+print("category context ok")
+
+filtered = {
+    "include": {
+        "core_skills": ["go"],
+        "education": [],
+        "certifications": [],
+        "open_source": [],
+        "hobbies": [],
+        "languages": ["english"],
+        "projects": ["billing"],
+    }
+}
+filtered_context = cvlib.build_context(dataset, filtered)
+assert filtered_context["skills"]["categories"] == [
+    {"name": "Languages", "items": ["Go"]}
+]
+assert filtered_context["education"]["entries"] == []
+assert filtered_context["extras"]["certifications"] == []
+assert filtered_context["extras"]["open_source"] == []
+assert filtered_context["extras"]["hobbies"] == []
+assert filtered_context["extras"]["languages"] == ["English (C2)"]
+assert [p["id"] for p in filtered_context["projects"]] == ["billing"]
+print("category selection manifests ok")
+
+item = categories.new_item("projects")
+assert categories.validate_item("projects", item) is not None
+item.update({"id": "demo", "name": "Demo project"})
+assert categories.validate_item("projects", item) is None
+assert categories.item_path(ROOT, "projects", item).name == "demo.yaml"
+print("category item helpers ok")
 
 look = {"text": "#101010", "desk": "#d0d0d0", "font": appearance.SERIF}
 for item in items:

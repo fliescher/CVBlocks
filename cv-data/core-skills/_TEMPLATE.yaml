@@ -1,0 +1,6 @@
+# One skill per file. `group` becomes the row label in the CV.
+# Copy this file to e.g. go.yaml (the filename is only a convention; `id` is
+# what selection manifests use).
+id: go
+group: Languages
+text: Go

@@ -1,8 +1,8 @@
 # CV Selector
 
-A CV that lives in plain YAML files: one file per role, one manifest per job
-application. Validate the dataset, pick the roles and bullets you want, render
-a tailored HTML CV, print it to PDF.
+A CV that lives in plain YAML files: one file per item, one manifest per job
+application. Validate the dataset, pick the roles, bullets, skills, projects,
+and other entries you want, render a tailored HTML CV, print it to PDF.
 
 No database, no lock-in. Every fact is a text file you can read, diff, and
 edit by hand — or through the PySide6 desktop app, which writes the same files.
@@ -19,18 +19,17 @@ edit by hand — or through the PySide6 desktop app, which writes the same files
   Troubleshooting).
 
 ## Future Features
-- [ ] categories for experience, core skills, education, certifications & trainings, open source projects, hobbies, languages selected projects (optional)
-- [ ] one action or button to add/edit/delete not only role but also skills, education, certifications,...
-- [ ] provide same layout for Cover Letter
-- [ ] 
-  
+
+- [ ] provide the same layouts for a cover letter
+- [ ] rank category items and achievements against a pasted job description
+
 ## Quick start
 
 There are 3 python scripts that can be run on Linux/MacOS as well as Windows with the following command from the Terminal/Powershell:
 ```
-python setup.py      #to run the automatic installation
-python validate.py   #to render everything to out/cv.html
-python launch_gui.py #to open the graphical user interface
+python setup.py      # install dependencies into .venv
+python validate.py   # validate the dataset
+python launch_gui.py # open the graphical user interface
 ```
 Alternatively, the commands can also be run manually as follows:
 
@@ -68,37 +67,50 @@ version.
 ```
 cv-data/                       the dataset — source of truth
   profile.yaml                 name, contact, summary paragraphs
-  skills.yaml                  grouped skill categories
-  education.yaml               degrees
-  extras.yaml                  certifications, open source, talks, languages
   roles/<year>-<company>.yaml  one file per role, achievements nested inside
   roles/_TEMPLATE.yaml         copy this; files starting with "_" are ignored
+  core-skills/<skill>.yaml     one skill per file, grouped by `group`
+  education/<degree>.yaml      one degree or qualification per file
+  certifications/<item>.yaml   one certification or training per file
+  open-source/<project>.yaml   one open source project per file
+  hobbies/<hobby>.yaml         one hobby per file
+  languages/<language>.yaml    one language per file
+  projects/<project>.yaml      one selected project per file
+  <category>/_TEMPLATE.yaml    copy these to add the first item
   schema/*.schema.json         JSON Schema per file, enforced on every load
   applications/<slug>/         manifest + generated output per application
   notes/                       free-form Markdown, never parsed
 src/cvlib.py                   loader, validator, selection, writer (no Qt)
+src/categories.py              category registry and shared item helpers (no Qt)
 src/layouts.py                 finds the bundled layouts in layouts/ (no Qt)
+src/themes.py                  20 built-in theme presets (no Qt)
 src/appearance.py              optional text/backdrop/font overrides (no Qt)
 src/render.py                  command-line renderer
 src/gui.py                     PySide6 desktop app
 templates/cv.html.j2           default single-column A4 template (Jinja2)
 layouts/                       20 selectable layouts: index.yaml + NN-name.html.j2
 examples/                      10 bundled layouts with a shared fictional dataset
-  data/                        sample profile, roles, skills, education, extras
+  data/                        sample profile and all category folders
   01-classic/ … 10-elegant/    example.yaml + template.html.j2 per layout
 out/                           generated CVs (git-ignored)
 ```
 
 ## Dataset conventions
 
-- **IDs are slugs.** Role IDs are unique across `roles/`; achievement IDs are
+- **IDs are slugs.** IDs are unique within each category; achievement IDs are
   unique within their role. Manifests reference these IDs.
 - **Dates are quoted** `YYYY-MM`, and `null` means the current role.
-- **One role per file** keeps diffs small and merge conflicts rare.
-- **Bullets** read action → technology → measurable result.
-- **Themes** are free-form tags (`performance`, `reliability`, `migration`,
-  `mentoring`, `cost`, `security`). The GUI filters by them; a job-description
-  match can use them later.
+- **One item per file** in every category keeps diffs small and merge
+  conflicts rare. The GUI writes one file when you add, edit, or delete a
+  single item.
+- **Bullets** read action → technology → measurable result. In the roles
+  category, a bullet is an achievement nested under its role. In the other
+  categories, each YAML file is one entry (a skill, degree, certification,
+  project, hobby, language, or selected project).
+- **Themes** are free-form achievement tags (`performance`, `reliability`,
+  `migration`, `mentoring`, `cost`, `security`). The GUI filters by them; a
+  job-description match can use them later. These are unrelated to the visual
+  **Theme** presets in the toolbar.
 - **Colours** live in `profile.yaml` under `theme`. `accent` styles headings,
   rules, and links; `highlight` styles bullets marked `highlight: true`.
   Both are optional and fall back to the defaults.
@@ -176,37 +188,72 @@ achievements:
 `metrics` is optional and currently informational — it keeps the numbers
 structured so a future ranking step can use them.
 
-### Skills, education, extras
+### The other content categories
+
+Every category is a folder with one YAML file per item. Copy the category's
+`_TEMPLATE.yaml` to start, or use the GUI Library tab.
 
 ```yaml
-# cv-data/skills.yaml
-categories:
-  - name: Languages
-    items: [Go, Python, TypeScript, SQL]
-  - name: Reliability
-    items: [SLOs, OpenTelemetry, Prometheus, incident command]
+# cv-data/core-skills/go.yaml
+id: go
+group: Languages
+text: Go
 ```
 
 ```yaml
-# cv-data/education.yaml
-entries:
-  - degree: BSc Computer Science
-    institution: Example University
-    year: "2016"
+# cv-data/education/bsc-computer-science.yaml
+id: bsc-computer-science
+degree: BSc Computer Science
+institution: Example University
+year: "2016"
+location: Berlin, Germany
 ```
 
 ```yaml
-# cv-data/extras.yaml
-certifications:
-  - AWS Certified Solutions Architect – Associate (2024)
-open_source:
-  - Maintainer, example-queue (1.2k stars)
-talks:
-  - "Boring reliability: SLOs that engineers actually use — PyCon DE 2023"
-languages:
-  - English (C2)
-  - German (B2)
+# cv-data/certifications/aws-solutions-architect.yaml
+id: aws-solutions-architect
+title: AWS Certified Solutions Architect – Associate
+issuer: Amazon Web Services
+year: "2024"
+kind: certification       # certification or training
 ```
+
+```yaml
+# cv-data/open-source/example-queue.yaml
+id: example-queue
+name: example-queue
+role: Maintainer
+url: https://github.com/example/example-queue
+text: Postgres-backed job queue; 1.2k stars
+```
+
+```yaml
+# cv-data/hobbies/cycling.yaml
+id: cycling
+name: Cycling
+text: Weekend rides and longer tours
+```
+
+```yaml
+# cv-data/languages/english.yaml
+id: english
+language: English
+level: C2
+```
+
+```yaml
+# cv-data/projects/billing-rewrite.yaml
+id: billing-rewrite
+name: Billing rewrite
+role: Technical lead
+year: "2025"
+url: https://example.com/project
+text: Replaced a nightly batch job with an event-driven service.
+```
+
+Skills are grouped by `group` when rendered. The remaining fields are optional
+unless the category schema requires them; the GUI marks the required ones.
+
 
 ### A selection manifest
 
@@ -225,19 +272,32 @@ include:
     - id: acme-senior
       achievements: [checkout-latency, on-call-reliability]
     - id: globex-engineer    # bare id = every achievement in that role
-  skills: [Languages]        # category names, in the order you want them
-  education: false           # drop the section entirely
-  extras: true
+  core_skills: [go, python, kubernetes]   # item IDs from core-skills/
+  education: [bsc-computer-science]       # item IDs, [] = omit, omit key = all
+  certifications: [aws-solutions-architect]
+  open_source: [example-queue]
+  hobbies: [cycling]
+  languages: [english, german]
+  projects: [billing-rewrite]
+  # Legacy shortcuts still work:
+  # skills: [Languages]      # group names, in the order you want them
+  # education: false         # boolean false omits the section
+  # extras: false            # boolean false omits all non-role categories
 ```
 
 Rules:
 
-- **Omit** `roles` or `skills` to include everything. An explicit empty list
-  includes nothing, which is how the GUI represents "nothing selected".
+- **Omit** an include key to include everything in that category. An explicit
+  empty list includes nothing, which is how the GUI represents "nothing
+  selected".
 - Roles render in the order you list them; without a manifest they sort
   newest-first by end date.
 - Listing `achievements` selects and orders those bullets only.
-- `education: false` / `extras: false` remove those sections.
+- For backwards compatibility, the older `education`, `extras`, and `skills`
+  booleans/lists are still accepted; new manifests use the category item IDs
+  above.
+- A manifest ID that does not exist is an error, so a typo never silently
+  drops content.
 
 ## Commands
 
@@ -245,7 +305,7 @@ Rules:
 # validate only; prints counts, exits non-zero on any schema error
 .venv/bin/python src/render.py --check
 
-# full CV (all roles, all skills, education, extras)
+# full CV (all roles and every category)
 .venv/bin/python src/render.py
 
 # tailored CV from a manifest
@@ -275,15 +335,19 @@ render, so a typo there surfaces as `unknown role id` at that point.
 .venv/bin/python src/gui.py --data path/to/cv-data
 ```
 
-The window is split in two: the experience library on the left, the live A4
+The window is split in two: the content library on the left, the live A4
 preview on the right.
 
-**Selecting** — tick roles or individual bullets. A ticked role includes all of
-its bullets; unticking one leaves the role partially checked. The preview and
-the `N role(s) · M bullet(s)` counter update immediately.
+**Selecting** — tick roles or individual bullets on the **Experience** tab.
+A ticked role includes all of its bullets; unticking one leaves the role
+partially checked. The **Library** tab groups the other categories (core
+skills, education, certifications & trainings, open source, hobbies,
+languages, selected projects). Its checkbox selects a whole category; child
+checkboxes select individual files. The preview and the
+`N role(s) · M bullet(s) · K library item(s)` counter update immediately.
 
-**Filtering** — type in the search box or pick a theme. Filters only narrow the
-list; they never change what is selected.
+**Filtering** — type in the search box or pick an achievement tag. Filters
+only narrow the role tree; they never change what is selected.
 
 **Colours** — the toolbar has two colour swatches:
 
@@ -305,6 +369,15 @@ Swiss, Split header, Ribbon, Monogram, Frame, Newspaper, Ledger, Soft). The
 choice is a view setting, remembered per user and never written to the dataset.
 Every layout takes the accent and highlight colours.
 
+**Themes** — the **Theme** dropdown offers 20 built-in presets (Teal, Ocean
+Blue, Navy Classic, Forest, Burgundy, Royal Purple, Slate, Charcoal & Amber,
+Crimson, Teal & Coral, Sunset, Rose, Olive, Midnight Indigo, Copper, Graphite,
+Sky, Mint, Warm Sand, Terminal) plus **Custom**. Selecting a preset re-renders
+immediately and applies its accent, highlight, body text colour, screen
+backdrop, and font. Accent and highlight are written to `profile.yaml` with
+`Save`; the other three are remembered per user. Any manual colour change
+switches the dropdown to Custom.
+
 **Customize…** (toolbar or `View`) opens one dialog for the look of whichever
 layout is active: accent, highlight, and three optional overrides, namely body
 text colour, screen backdrop, and font. Each override can stay on `Layout
@@ -318,34 +391,45 @@ To add a layout, drop `NN-name.html.j2` into `layouts/` and add an entry to
 From the command line: `python src/render.py --list-layouts`, then
 `python src/render.py --layout swiss --accent "#1d4ed8"`.
 
-**Sections** — unlike the search and theme filters, the checkboxes on the
-Sections tab are part of the CV selection: skill categories, Education, and the
-extras block (certifications, open source, talks, languages). They never delete
-data; unchecking Education just omits the section from this variant and from a
-manifest you save.
+**Library** — the Library tab is the category browser and editor. Each
+category has a checkbox that selects all its items; each child checkbox
+selects one YAML file. Double-click an item (or use `Edit…`) to edit it,
+`Delete…` removes it after confirmation, and `Add bullet…` opens the same
+category chooser as the toolbar button. None of these checkboxes delete data;
+unchecking an item only omits it from the current preview and from a manifest
+you save.
+
+**Add bullet** — one toolbar action (`Ctrl+B`, also on `Edit`) opens a category
+chooser. Choosing **Role achievement** asks which role the bullet belongs to
+and adds a nested achievement; choosing any other category opens that
+category's item form and creates one YAML file. The new item is selected and
+in the current build until you press `Save`.
 
 **Editing** — `Edit → Edit profile…` covers contact details, links, and summary
 paragraphs. `Add role…` / `Edit role…` open a dialog with the role fields and
 its achievement list; achievements can be added, removed, and reordered.
-`Delete role…` removes the entry and its YAML file after confirmation.
-`File → Open dataset…` switches to another `cv-data` folder.
+`Delete role…` removes the entry and its YAML file after confirmation. The
+Library tab provides the equivalent add/edit/delete flow for every other
+category. `File → Open dataset…` switches to another `cv-data` folder.
 `File → Load example…` opens one of the ten bundled layouts instead; see
 [Bundled layouts](#bundled-layouts).
 
 **Examples** — example mode loads the shared fictional dataset from
-`examples/data`. It is read-only: selection, section checkboxes, preview, and
-`Export HTML…` still work, and so do the Style dropdown and the colour pickers
-(their colours stay in memory only). `Save`, `Save selection as…`,
-`Mark important`, and the editing actions are disabled. Use
-`File → Open dataset…` to return to your own data and the default template.
+`examples/data`. It is read-only: selection, the Library checkboxes, preview,
+`Export HTML…`, the Style dropdown, the Theme dropdown, and the colour controls
+still work (colour/theme changes stay in memory only). `Save`,
+`Save selection as…`, `Add bullet`, `Mark important`, and the editing actions
+are disabled. Use `File → Open dataset…` to return to your own data and the
+default template.
 
-**Saving** — dataset edits are not written until `Save` (`Ctrl+S`), including a
-newly added role. Only changed files are written: the profile when colours or
-contact details changed, and each edited role. Saves go through `ruamel.yaml`,
-so comments and key order in untouched parts survive; comments inside a
-replaced list (such as a role's achievements) may be dropped. Closing with
-unsaved changes prompts you. Deleting a role is the exception: its file is
-removed immediately after confirmation.
+**Saving** — dataset edits are not written until `Save` (`Ctrl+S`), including
+a newly added role or category item. Only changed files are written: the
+profile when colours or contact details changed, each edited role, and each
+edited or newly added category file. Saves go through `ruamel.yaml`, so comments
+and key order in untouched parts survive; comments inside a replaced list (such
+as a role's achievements) may be dropped. Closing with unsaved changes prompts
+you. Deleting a role or category item is the exception: its file is removed
+immediately after confirmation.
 
 **Exporting** — `Export HTML…` (`Ctrl+E`) renders the current selection;
 `File → Save selection as…` writes a manifest you can reuse with the CLI. The
@@ -398,6 +482,14 @@ still works. Render one from the command line with:
 3. `.venv/bin/python src/render.py --check`
 4. `.venv/bin/python src/render.py`
 
+**Add a skill, degree, certification, project, hobby, or language**
+
+1. In the GUI: `Add bullet` (`Ctrl+B`) and choose the category. The item dialog
+   writes one YAML file in that category on the next `Save`. Or copy the
+   category's `_TEMPLATE.yaml` by hand.
+2. Use a lowercase slug for `id`; manifests reference it.
+3. Run `.venv/bin/python src/render.py --check`.
+
 **Tailor for an application**
 
 1. In the GUI: tick the bullets, then `File → Save selection as…`. Or create
@@ -420,7 +512,10 @@ margins **Default**, **Background graphics on**. The filename convention
 - `does not match '^[a-z0-9]+...'`: IDs must be lowercase slugs.
 - `unknown role id` / `unknown achievement id`: the manifest references an ID
   that does not exist in `roles/`. IDs are case-sensitive.
-- `unknown skill categor(y/ies)`: use the exact `name` from `skills.yaml`.
+- `unknown core_skills id(s)` (or the same error for another category): the
+  manifest references an item ID that is not in that category folder.
+- `unknown skill categor(y/ies)`: an older manifest uses group names from
+  `include.skills`; switch to `include.core_skills` with item IDs.
 - **The preview says QtWebEngine is missing.** The app still edits, saves, and
   exports; use `View → Open preview in browser`. On Fedora,
   `sudo dnf install krb5-libs` provides the missing library for live preview.

@@ -1,0 +1,6 @@
+# One open source project per file.
+id: example-queue
+name: example-queue
+role: Maintainer
+url: https://github.com/example/example-queue
+text: Postgres-backed job queue; 1.2k stars

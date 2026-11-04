@@ -1,0 +1,8 @@
+# One certification, course, or training per file.
+# `kind` is either certification or training.
+id: aws-solutions-architect
+title: AWS Certified Solutions Architect – Associate
+issuer: Amazon Web Services
+year: "2024"
+kind: certification
+url: ""

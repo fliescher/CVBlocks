@@ -1,0 +1,8 @@
+# One selected project per file. These are projects you want to call out
+# separately from employment and open source work.
+id: example-project
+name: Example project
+role: Technical lead
+year: "2025"
+url: https://example.com/project
+text: Replaced a nightly batch job with an event-driven service.

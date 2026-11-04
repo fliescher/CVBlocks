@@ -249,6 +249,22 @@
   </section>
   {% endif %}
 
+  {% if projects %}
+  <section aria-labelledby="projects">
+    <h2 id="projects">Selected Projects</h2>
+    {% for project in projects %}
+    <article class="job">
+      <div class="job-head">
+        <h3 class="job-title">{{ project.name }}{% if project.get('role') %} · <span class="company">{{ project.role }}</span>{% endif %}</h3>
+        {% if project.get('year') %}<div class="job-meta">{{ project.year }}</div>{% endif %}
+      </div>
+      {% if project.get('text') %}<p class="scope">{{ project.text }}</p>{% endif %}
+      {% if project.get('url') %}<p><a href="{{ project.url }}">{{ project.url }}</a></p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
   {% if education.entries %}
   <section aria-labelledby="education">
     <h2 id="education">Education</h2>
@@ -263,11 +279,15 @@
   </section>
   {% endif %}
 
-  {% if extras_items %}
+  {% if extras.certifications or extras.open_source or extras.talks or extras.hobbies or extras.languages %}
   <section aria-labelledby="extras">
-    <h2 id="extras">Certifications &amp; Open Source</h2>
+    <h2 id="extras">Certifications, Open Source &amp; More</h2>
     <ul class="two-col">
-      {% for item in extras_items %}<li>{{ item }}</li>{% endfor %}
+      {% if extras.certifications %}<li><b>Certifications &amp; trainings:</b> {{ extras.certifications | join('; ') }}</li>{% endif %}
+      {% if extras.open_source %}<li><b>Open source:</b> {{ extras.open_source | join('; ') }}</li>{% endif %}
+      {% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}
+      {% if extras.hobbies %}<li><b>Hobbies:</b> {{ extras.hobbies | join('; ') }}</li>{% endif %}
+      {% if extras.languages %}<li><b>Languages:</b> {{ extras.languages | join(', ') }}</li>{% endif %}
     </ul>
   </section>
   {% endif %}

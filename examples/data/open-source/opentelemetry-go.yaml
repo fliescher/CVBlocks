@@ -1,0 +1,5 @@
+id: opentelemetry-go
+name: OpenTelemetry Go
+role: Contributor
+url: https://github.com/open-telemetry/opentelemetry-go
+text: Instrumentation and exporter fixes

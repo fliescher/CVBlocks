@@ -22,8 +22,10 @@ from pathlib import Path
 from typing import Any
 
 import appearance
+import categories
 import cvlib
 import layouts
+import themes
 
 from PySide6.QtCore import QCoreApplication, QSettings, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QAction, QBrush, QColor, QDesktopServices, QIcon, QPixmap
@@ -40,6 +42,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -481,6 +484,209 @@ class RoleDialog(QDialog):
         return role
 
 
+class CategoryChooserDialog(QDialog):
+    """The category chooser behind the single Add bullet action."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Add bullet")
+        self.resize(660, 460)
+
+        self.list = QListWidget()
+        choices = [("roles", "Role achievement", "Add a bullet to an existing role")]
+        choices.extend(
+            (
+                key,
+                categories.SPECS[key]["label"],
+                categories.SPECS[key]["description"],
+            )
+            for key in categories.CATEGORY_ORDER
+        )
+        for key, label, description in choices:
+            item = QListWidgetItem(f"{label} — {description}")
+            item.setData(Qt.ItemDataRole.UserRole, key)
+            item.setToolTip(description)
+            self.list.addItem(item)
+        self.list.itemDoubleClicked.connect(lambda _item: self.accept())
+        self.list.setCurrentRow(0)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Choose")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            QLabel("Choose where the new bullet should live. You can edit or delete it later.")
+        )
+        layout.addWidget(self.list, 1)
+        layout.addWidget(buttons)
+
+    def selected_category(self) -> str | None:
+        item = self.list.currentItem()
+        if item is None:
+            return None
+        return item.data(Qt.ItemDataRole.UserRole)
+
+
+class LibraryItemDialog(QDialog):
+    """A form generated from the category registry, so every category gets the
+    same add/edit experience without a hand-written dialog per type."""
+
+    def __init__(
+        self,
+        category: str,
+        item: dict[str, Any],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.category = category
+        self.item = deepcopy(item)
+        self.widgets: dict[str, QWidget] = {}
+        spec = categories.SPECS[category]
+        self.setWindowTitle(f"{spec['label']} item")
+        self.resize(620, 460)
+
+        form = QFormLayout()
+        for field in categories.fields(category):
+            key = field["key"]
+            value = str(self.item.get(key) or "")
+            if field["choices"]:
+                widget = QComboBox()
+                for choice in field["choices"]:
+                    widget.addItem(choice, choice)
+                if value and widget.findData(value) < 0:
+                    widget.addItem(value, value)
+                widget.setCurrentIndex(max(widget.findData(value), 0))
+            elif field["multiline"]:
+                widget = QPlainTextEdit()
+                widget.setPlainText(value)
+                widget.setFixedHeight(84)
+            else:
+                widget = QLineEdit(value)
+                widget.setPlaceholderText(field["placeholder"])
+                if field["slug"]:
+                    widget.setToolTip("Lowercase letters, digits, and single hyphens.")
+            self.widgets[key] = widget
+            label = field["label"] + (" *" if field["required"] else "")
+            form.addRow(label, widget)
+
+        note = QLabel(
+            "Fields marked * are required. Each category item is stored in its own "
+            "YAML file; the ID is the stable name used by selection manifests."
+        )
+        note.setWordWrap(True)
+        note.setStyleSheet("color: #6b7280;")
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addLayout(form)
+        layout.addWidget(note)
+        layout.addStretch(1)
+        layout.addWidget(buttons)
+
+    def values(self) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for field in categories.fields(self.category):
+            widget = self.widgets[field["key"]]
+            if isinstance(widget, QComboBox):
+                result[field["key"]] = str(widget.currentData() or "")
+            elif isinstance(widget, QPlainTextEdit):
+                result[field["key"]] = widget.toPlainText().strip()
+            elif isinstance(widget, QLineEdit):
+                result[field["key"]] = widget.text().strip()
+        return result
+
+    def accept(self) -> None:
+        data = self.values()
+        error = categories.validate_item(self.category, data)
+        if error:
+            QMessageBox.warning(self, "Cannot save item", error)
+            return
+        self.item.update(data)
+        super().accept()
+
+    def result_item(self) -> dict[str, Any]:
+        return deepcopy(self.item)
+
+
+class AchievementDialog(QDialog):
+    """Add one achievement bullet to an existing role."""
+
+    def __init__(
+        self,
+        role: dict[str, Any],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.role = role
+        self.setWindowTitle(f"Add bullet to {role.get('title') or role.get('id')}")
+        self.resize(560, 320)
+
+        self.id = QLineEdit()
+        self.id.setPlaceholderText("checkout-latency")
+        self.themes = QLineEdit()
+        self.themes.setPlaceholderText("performance, delivery")
+        self.text = QPlainTextEdit()
+        self.text.setPlaceholderText("Action → technology → measurable result.")
+        self.text.setFixedHeight(100)
+        self.highlight = QCheckBox("Highlight this bullet")
+
+        form = QFormLayout()
+        form.addRow("ID", self.id)
+        form.addRow("Themes", self.themes)
+        form.addRow("Text", self.text)
+        form.addRow("", self.highlight)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addLayout(form)
+        layout.addWidget(buttons)
+
+    def accept(self) -> None:
+        achievement_id = self.id.text().strip()
+        if not achievement_id or not categories.SLUG_PATTERN.fullmatch(achievement_id):
+            QMessageBox.warning(
+                self,
+                "Cannot save bullet",
+                "The achievement ID must be a lowercase slug such as 'cut-latency'.",
+            )
+            return
+        if any(a["id"] == achievement_id for a in self.role.get("achievements", [])):
+            QMessageBox.warning(
+                self,
+                "Duplicate ID",
+                f"This role already has a bullet with ID '{achievement_id}'.",
+            )
+            return
+        if not self.text.toPlainText().strip():
+            QMessageBox.warning(self, "Cannot save bullet", "The bullet needs text.")
+            return
+        super().accept()
+
+    def result_achievement(self) -> dict[str, Any]:
+        return {
+            "id": self.id.text().strip(),
+            "themes": [
+                part.strip() for part in self.themes.text().split(",") if part.strip()
+            ],
+            "text": self.text.toPlainText().strip(),
+            "highlight": self.highlight.isChecked(),
+        }
+
+
 # --------------------------------------------------------------------------
 # Preview
 # --------------------------------------------------------------------------
@@ -706,14 +912,17 @@ class MainWindow(QMainWindow):
         self.root = data_root
         self.dataset: dict[str, Any] = {}
         self.dirty_roles: set[Path] = set()
+        self.dirty_items: dict[Path, str] = {}
         self.profile_dirty = False
         self._updating = False
+        self.library_updating = False
         self.template_path = cvlib.DEFAULT_TEMPLATE
         self.example: dict[str, Any] | None = None
 
         # Layout and look are view settings kept per user, not written to the dataset.
         self.settings = QSettings("CVBlocks", "CVSelector")
         self.layout_slug = self.saved_layout()
+        self.theme_id = str(self.settings.value("theme/id", "") or "")
         self.appearance = appearance.loads(str(self.settings.value("appearance/json", "") or ""))
 
         self.setWindowTitle("CV Selector")
@@ -739,6 +948,16 @@ class MainWindow(QMainWindow):
         self.layout_combo.currentIndexChanged.connect(self.on_layout_selected)
         toolbar.addWidget(self.layout_combo)
 
+        toolbar.addWidget(QLabel(" Theme "))
+        self.visual_theme_combo = QComboBox()
+        self.visual_theme_combo.setMinimumWidth(150)
+        self.visual_theme_combo.setToolTip(
+            "Built-in colour and font preset; use Customize… to fine-tune it"
+        )
+        self.populate_visual_theme_combo()
+        self.visual_theme_combo.currentIndexChanged.connect(self.on_visual_theme_selected)
+        toolbar.addWidget(self.visual_theme_combo)
+
         self.customize_button = QToolButton()
         self.customize_button.setText("Customize…")
         self.customize_button.setToolTip("Accent, highlight, text colour, backdrop, and font")
@@ -760,6 +979,15 @@ class MainWindow(QMainWindow):
 
         toolbar.addWidget(self.accent_button)
         toolbar.addWidget(self.highlight_button)
+        toolbar.addSeparator()
+
+        self.add_bullet_action = QAction("Add bullet", self)
+        self.add_bullet_action.setToolTip(
+            "Add a role achievement or an item in any other content category"
+        )
+        self.add_bullet_action.setShortcut("Ctrl+B")
+        self.add_bullet_action.triggered.connect(self.add_bullet)
+        toolbar.addAction(self.add_bullet_action)
         toolbar.addSeparator()
 
         self.mark_action = QAction("Mark important", self)
@@ -802,6 +1030,14 @@ class MainWindow(QMainWindow):
         self.add_role_action = edit_menu.addAction("Add role…", self.add_role)
         self.edit_role_action = edit_menu.addAction("Edit role…", self.edit_role)
         self.delete_role_action = edit_menu.addAction("Delete role…", self.delete_role)
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.add_bullet_action)
+        self.edit_item_action = edit_menu.addAction(
+            "Edit selected library item…", self.edit_library_item
+        )
+        self.delete_item_action = edit_menu.addAction(
+            "Delete selected library item…", self.delete_library_item
+        )
 
         self.example_locked_actions = [
             self.save_action,
@@ -811,6 +1047,9 @@ class MainWindow(QMainWindow):
             self.add_role_action,
             self.edit_role_action,
             self.delete_role_action,
+            self.add_bullet_action,
+            self.edit_item_action,
+            self.delete_item_action,
         ]
         self.example_locked_widgets: list[QWidget] = []
 
@@ -832,7 +1071,7 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(8)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search achievements…")
+        self.search.setPlaceholderText("Search role bullets…")
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.apply_filters)
 
@@ -854,7 +1093,7 @@ class MainWindow(QMainWindow):
         self.tree.itemDoubleClicked.connect(self.on_tree_double_click)
 
         self.tabs.addTab(self.tree, "Experience")
-        self.tabs.addTab(self._build_sections_tab(), "Sections")
+        self.tabs.addTab(self._build_library_tab(), "Library")
 
         left_layout.addWidget(self.search)
         left_layout.addWidget(self.theme_filter)
@@ -886,34 +1125,55 @@ class MainWindow(QMainWindow):
         splitter.addWidget(right)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([420, 940])
+        splitter.setSizes([480, 880])
         self.setCentralWidget(splitter)
 
-    def _build_sections_tab(self) -> QWidget:
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        inner = QWidget()
-        layout = QVBoxLayout(inner)
+    def _build_library_tab(self) -> QWidget:
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
         layout.setContentsMargins(4, 8, 4, 8)
 
-        self.skill_boxes: list[QCheckBox] = []
-        self.skills_box = QGroupBox("Skill categories")
-        self.skills_layout = QVBoxLayout(self.skills_box)
-        self.skills_layout.setSpacing(4)
+        intro = QLabel(
+            "Check items to include them in the preview. Double-click an item to edit it."
+        )
+        intro.setWordWrap(True)
+        intro.setStyleSheet("color: #6b7280;")
 
-        self.education_check = QCheckBox("Education")
-        self.education_check.setChecked(True)
-        self.education_check.toggled.connect(self.update_preview)
-        self.extras_check = QCheckBox("Certifications, open source, talks, languages")
-        self.extras_check.setChecked(True)
-        self.extras_check.toggled.connect(self.update_preview)
+        self.library = QTreeWidget()
+        self.library.setColumnCount(2)
+        self.library.setHeaderLabels(["Item", "Details"])
+        self.library.header().setStretchLastSection(False)
+        self.library.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.library.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self.library.header().resizeSection(1, 160)
+        self.library.setAlternatingRowColors(True)
+        self.library.setWordWrap(False)
+        self.library.itemChanged.connect(self.on_library_item_changed)
+        self.library.itemDoubleClicked.connect(self.on_library_double_click)
 
-        layout.addWidget(self.skills_box)
-        layout.addWidget(self.education_check)
-        layout.addWidget(self.extras_check)
-        layout.addStretch(1)
-        scroll.setWidget(inner)
-        return scroll
+        buttons = QHBoxLayout()
+        self.library_add_button = QPushButton("Add bullet…")
+        self.library_edit_button = QPushButton("Edit…")
+        self.library_delete_button = QPushButton("Delete…")
+        self.library_add_button.clicked.connect(self.add_bullet)
+        self.library_edit_button.clicked.connect(self.edit_library_item)
+        self.library_delete_button.clicked.connect(self.delete_library_item)
+        buttons.addWidget(self.library_add_button)
+        buttons.addWidget(self.library_edit_button)
+        buttons.addWidget(self.library_delete_button)
+        buttons.addStretch(1)
+        self.example_locked_widgets.extend(
+            [
+                self.library_add_button,
+                self.library_edit_button,
+                self.library_delete_button,
+            ]
+        )
+
+        layout.addWidget(intro)
+        layout.addWidget(self.library, 1)
+        layout.addLayout(buttons)
+        return panel
 
     # ---------------- Dataset ----------------
 
@@ -933,6 +1193,7 @@ class MainWindow(QMainWindow):
         self.template_path = template or cvlib.DEFAULT_TEMPLATE
         self.example = example
         self.dirty_roles.clear()
+        self.dirty_items.clear()
         self.profile_dirty = False
         if example:
             self.setWindowTitle(f"CV Selector — Example: {example['name']}")
@@ -942,8 +1203,10 @@ class MainWindow(QMainWindow):
         # An example brings its own layout; your own dataset uses the saved choice.
         self.layout_slug = "" if example else self.saved_layout()
         self.sync_layout_combo()
+        self.theme_id = self.matching_visual_theme()
+        self.sync_visual_theme_combo()
         self.refresh_theme_buttons()
-        self.rebuild_sections()
+        self.rebuild_library()
         self.rebuild_tree()
         self.update_preview()
         if example:
@@ -969,27 +1232,130 @@ class MainWindow(QMainWindow):
         self.accent_button.setIcon(swatch_icon(theme["accent"]))
         self.highlight_button.setIcon(swatch_icon(theme["highlight"]))
 
-    def rebuild_sections(self) -> None:
-        while self.skills_layout.count():
-            item = self.skills_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-        self.skill_boxes.clear()
+    def rebuild_library(self, preserved: set[tuple[str, str]] | None = None) -> None:
+        self.library_updating = True
+        self.library.clear()
 
-        categories = self.dataset["skills"]["categories"]
-        if not categories:
-            label = QLabel("No skill categories yet.")
-            label.setStyleSheet("color: #6b7280;")
-            self.skills_layout.addWidget(label)
+        for key in categories.CATEGORY_ORDER:
+            spec = categories.SPECS[key]
+            items = self.dataset.get(key, [])
+            category_item = QTreeWidgetItem(
+                self.library, [f"{spec['label']} ({len(items)})", ""]
+            )
+            category_item.setData(
+                0, Qt.ItemDataRole.UserRole, {"type": "category", "category": key}
+            )
+            category_item.setFlags(
+                Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsSelectable
+                | Qt.ItemFlag.ItemIsUserCheckable
+            )
+            font = category_item.font(0)
+            font.setBold(True)
+            category_item.setFont(0, font)
+            category_item.setToolTip(0, spec["description"])
+            category_item.setCheckState(
+                0, Qt.CheckState.Checked if items else Qt.CheckState.Unchecked
+            )
+
+            for item in items:
+                title = categories.item_title(key, item)
+                detail = categories.item_detail(key, item)
+                child = QTreeWidgetItem(category_item, [elide(title), elide(detail, 80)])
+                child.setData(
+                    0,
+                    Qt.ItemDataRole.UserRole,
+                    {"type": "item", "category": key, "id": item["id"]},
+                )
+                child.setFlags(
+                    Qt.ItemFlag.ItemIsEnabled
+                    | Qt.ItemFlag.ItemIsSelectable
+                    | Qt.ItemFlag.ItemIsUserCheckable
+                )
+                tooltip = " · ".join(part for part in (title, detail) if part)
+                child.setToolTip(0, tooltip)
+                child.setToolTip(1, tooltip)
+                if preserved is None:
+                    checked = True
+                else:
+                    checked = (key, item["id"]) in preserved
+                child.setCheckState(
+                    0, Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+                )
+
+            self.sync_library_category(category_item)
+            category_item.setExpanded(True)
+
+        self.library_updating = False
+
+    def sync_library_category(self, category_item: QTreeWidgetItem) -> None:
+        total = category_item.childCount()
+        if total == 0:
             return
+        checked = sum(
+            1
+            for index in range(total)
+            if category_item.child(index).checkState(0) == Qt.CheckState.Checked
+        )
+        if checked == 0:
+            category_item.setCheckState(0, Qt.CheckState.Unchecked)
+        elif checked == total:
+            category_item.setCheckState(0, Qt.CheckState.Checked)
+        else:
+            category_item.setCheckState(0, Qt.CheckState.PartiallyChecked)
 
-        for category in categories:
-            box = QCheckBox(category["name"])
-            box.setChecked(True)
-            box.toggled.connect(self.update_preview)
-            self.skills_layout.addWidget(box)
-            self.skill_boxes.append(box)
+    def library_selection(self) -> set[tuple[str, str]]:
+        chosen: set[tuple[str, str]] = set()
+        for index in range(self.library.topLevelItemCount()):
+            category_item = self.library.topLevelItem(index)
+            category_data = category_item.data(0, Qt.ItemDataRole.UserRole) or {}
+            key = category_data.get("category")
+            for child_index in range(category_item.childCount()):
+                child = category_item.child(child_index)
+                if child.checkState(0) == Qt.CheckState.Checked:
+                    child_data = child.data(0, Qt.ItemDataRole.UserRole) or {}
+                    chosen.add((key, child_data.get("id")))
+        return chosen
+
+    def library_value(self, category: str, item_id: str) -> dict[str, Any] | None:
+        return next(
+            (item for item in self.dataset.get(category, []) if item["id"] == item_id),
+            None,
+        )
+
+    def selected_library_item(self) -> tuple[str, dict[str, Any]] | None:
+        selection = self.library.currentItem()
+        if selection is None:
+            return None
+        data = selection.data(0, Qt.ItemDataRole.UserRole) or {}
+        if data.get("type") != "item":
+            return None
+        item = self.library_value(data.get("category"), data.get("id"))
+        if item is None:
+            return None
+        return data["category"], item
+
+    def on_library_item_changed(
+        self, item: QTreeWidgetItem, column: int
+    ) -> None:
+        if self.library_updating or column != 0:
+            return
+        data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+        self.library_updating = True
+        if data.get("type") == "category":
+            state = item.checkState(0)
+            for index in range(item.childCount()):
+                item.child(index).setCheckState(0, state)
+        elif item.parent() is not None:
+            self.sync_library_category(item.parent())
+        self.library_updating = False
+        self.update_preview()
+
+    def on_library_double_click(self, item: QTreeWidgetItem, column: int) -> None:
+        data = item.data(0, Qt.ItemDataRole.UserRole) or {}
+        if data.get("type") == "item":
+            self.library.setCurrentItem(item)
+            self.edit_library_item()
 
     def rebuild_tree(self, preserved: set[tuple[str, str]] | None = None) -> None:
         self._updating = True
@@ -1095,6 +1461,14 @@ class MainWindow(QMainWindow):
             for child_index in range(role_item.childCount()):
                 role_item.child(child_index).setCheckState(0, state)
         self._updating = False
+
+        self.library_updating = True
+        for index in range(self.library.topLevelItemCount()):
+            category_item = self.library.topLevelItem(index)
+            category_item.setCheckState(0, state)
+            for child_index in range(category_item.childCount()):
+                category_item.child(child_index).setCheckState(0, state)
+        self.library_updating = False
         self.update_preview()
 
     def on_item_changed(self, item: QTreeWidgetItem, column: int) -> None:
@@ -1180,6 +1554,81 @@ class MainWindow(QMainWindow):
         self.update_preview()
         self.statusBar().showMessage(f"Layout: {self.layout_combo.itemText(index)}", 4000)
 
+    def populate_visual_theme_combo(self) -> None:
+        combo = self.visual_theme_combo
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("Custom", "")
+        combo.setItemData(0, "Your current colours", Qt.ItemDataRole.ToolTipRole)
+        for style in themes.BUILTIN_STYLES:
+            combo.addItem(style["name"], style["id"])
+            combo.setItemData(
+                combo.count() - 1,
+                "Accent, highlight, body colour, backdrop, and font",
+                Qt.ItemDataRole.ToolTipRole,
+            )
+        index = combo.findData(self.theme_id)
+        combo.setCurrentIndex(max(index, 0))
+        combo.blockSignals(False)
+
+    def sync_visual_theme_combo(self) -> None:
+        self.visual_theme_combo.blockSignals(True)
+        self.visual_theme_combo.setCurrentIndex(
+            max(self.visual_theme_combo.findData(self.theme_id), 0)
+        )
+        self.visual_theme_combo.blockSignals(False)
+
+    def matching_visual_theme(self) -> str:
+        theme = cvlib.theme_from(self.dataset.get("profile", {}))
+        for style in themes.BUILTIN_STYLES:
+            if (
+                style["accent"].lower() == theme["accent"].lower()
+                and style["highlight"].lower() == theme["highlight"].lower()
+            ):
+                return style["id"]
+        return ""
+
+    def mark_custom_theme(self) -> None:
+        if not self.theme_id:
+            return
+        self.theme_id = ""
+        self.settings.setValue("theme/id", "")
+        self.sync_visual_theme_combo()
+
+    def on_visual_theme_selected(self, index: int) -> None:
+        theme_id = self.visual_theme_combo.itemData(index)
+        if not isinstance(theme_id, str) or not theme_id:
+            self.theme_id = ""
+            self.settings.setValue("theme/id", "")
+            return
+        style = themes.find_builtin(theme_id)
+        if style is None:
+            return
+
+        self.theme_id = style["id"]
+        self.settings.setValue("theme/id", self.theme_id)
+
+        profile = self.dataset["profile"]
+        current = cvlib.theme_from(profile)
+        if (
+            style["accent"].lower() != current["accent"].lower()
+            or style["highlight"].lower() != current["highlight"].lower()
+        ):
+            theme = profile.setdefault("theme", dict(cvlib.DEFAULT_THEME))
+            theme["accent"] = style["accent"]
+            theme["highlight"] = style["highlight"]
+            if not self.example:
+                self.profile_dirty = True
+
+        self.appearance = appearance.clean(
+            {"text": style["text"], "desk": style["desk"], "font": style["font"]}
+        )
+        self.settings.setValue("appearance/json", appearance.dumps(self.appearance))
+        self.refresh_theme_buttons()
+        self.recolor_highlights()
+        self.update_preview()
+        self.statusBar().showMessage(f"Theme: {style['name']}", 4000)
+
     def effective_template(self) -> Path:
         if self.layout_slug:
             item = layouts.find(self.layout_slug)
@@ -1199,6 +1648,7 @@ class MainWindow(QMainWindow):
         saved_theme = deepcopy(profile.get("theme"))
         saved_dirty = self.profile_dirty
         saved_look = dict(self.appearance)
+        saved_theme_id = self.theme_id
 
         dialog = AppearanceDialog(cvlib.theme_from(profile), self.appearance, self)
         dialog.changed.connect(self.apply_appearance)
@@ -1212,6 +1662,9 @@ class MainWindow(QMainWindow):
         else:
             profile["theme"] = saved_theme
         self.profile_dirty = saved_dirty
+        self.theme_id = saved_theme_id
+        self.settings.setValue("theme/id", self.theme_id)
+        self.sync_visual_theme_combo()
         self.appearance = saved_look
         self.refresh_theme_buttons()
         self.recolor_highlights()
@@ -1226,6 +1679,7 @@ class MainWindow(QMainWindow):
                 theme[key] = values.get(key, current[key])
             if not self.example:
                 self.profile_dirty = True
+            self.mark_custom_theme()
         self.appearance = appearance.clean({key: values.get(key) for key in appearance.KEYS})
         self.refresh_theme_buttons()
         self.recolor_highlights()
@@ -1242,6 +1696,7 @@ class MainWindow(QMainWindow):
         self.dataset["profile"].setdefault("theme", dict(cvlib.DEFAULT_THEME))[key] = color.name()
         if not self.example:  # examples are read-only, so the colour only lives in memory
             self.profile_dirty = True
+        self.mark_custom_theme()
         self.refresh_theme_buttons()
         self.recolor_highlights()
         self.update_preview()
@@ -1317,7 +1772,21 @@ class MainWindow(QMainWindow):
             if achievement_ids:
                 roles.append({"id": role_id, "achievements": achievement_ids})
 
-        skills = [box.text() for box in self.skill_boxes if box.isChecked()]
+        selected = {key: [] for key in categories.CATEGORY_ORDER}
+        for index in range(self.library.topLevelItemCount()):
+            category_item = self.library.topLevelItem(index)
+            category_data = category_item.data(0, Qt.ItemDataRole.UserRole) or {}
+            key = category_data.get("category")
+            if key not in selected:
+                continue
+            for child_index in range(category_item.childCount()):
+                child = category_item.child(child_index)
+                if child.checkState(0) == Qt.CheckState.Checked:
+                    child_data = child.data(0, Qt.ItemDataRole.UserRole) or {}
+                    selected[key].append(child_data.get("id"))
+
+        include: dict[str, Any] = {"roles": roles}
+        include.update(selected)
         return {
             "application": {
                 "company": "",
@@ -1325,12 +1794,7 @@ class MainWindow(QMainWindow):
                 "date": date.today().isoformat(),
                 "job_description": "",
             },
-            "include": {
-                "roles": roles,
-                "skills": skills,
-                "education": self.education_check.isChecked(),
-                "extras": self.extras_check.isChecked(),
-            },
+            "include": include,
         }
 
     def update_preview(self) -> None:
@@ -1349,7 +1813,13 @@ class MainWindow(QMainWindow):
 
         roles = len(manifest["include"]["roles"])
         bullets = sum(len(role["achievements"]) for role in manifest["include"]["roles"])
-        self.counts_label.setText(f"{roles} role(s) · {bullets} bullet(s)")
+        items = sum(
+            len(manifest["include"].get(key, []))
+            for key in categories.CATEGORY_ORDER
+        )
+        self.counts_label.setText(
+            f"{roles} role(s) · {bullets} bullet(s) · {items} library item(s)"
+        )
 
     def export_html(self) -> None:
         name = f"{self.example['slug']}.html" if self.example else f"cv-{date.today().isoformat()}.html"
@@ -1392,6 +1862,217 @@ class MainWindow(QMainWindow):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
 
     # ---------------- Editing ----------------
+
+    def add_bullet(self) -> None:
+        if self.example:
+            return
+        chooser = CategoryChooserDialog(self)
+        if chooser.exec() != QDialog.DialogCode.Accepted:
+            return
+        category = chooser.selected_category()
+        if not category:
+            return
+        if category == "roles":
+            self.add_role_achievement()
+        else:
+            self.add_library_item(category)
+
+    def add_role_achievement(self) -> None:
+        if self.example:
+            return
+        roles = self.dataset["roles"]
+        if not roles:
+            QMessageBox.information(
+                self,
+                "No roles yet",
+                "Add a role first, then you can add bullets to it.",
+            )
+            return
+
+        if len(roles) == 1:
+            role = roles[0]
+        else:
+            labels = [
+                f"{role['title']} — {role['company']} ({role['id']})"
+                for role in roles
+            ]
+            label, accepted = QInputDialog.getItem(
+                self,
+                "Add bullet",
+                "Choose the role for this bullet:",
+                labels,
+                0,
+                False,
+            )
+            if not accepted:
+                return
+            role = roles[labels.index(label)]
+
+        dialog = AchievementDialog(role, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        achievement = dialog.result_achievement()
+        role["achievements"].append(achievement)
+        role_file = role.get("_file")
+        if role_file:
+            self.dirty_roles.add(role_file)
+        preserved = self.selection() | {(role["id"], achievement["id"])}
+        self.rebuild_tree(preserved)
+        self.tabs.setCurrentWidget(self.tree)
+        self.focus_achievement(role["id"], achievement["id"])
+        self.statusBar().showMessage(
+            f"Added bullet to {role['title']} — save to keep.", 6000
+        )
+
+    def add_library_item(self, category: str) -> None:
+        if self.example:
+            return
+        spec = categories.SPECS[category]
+        dialog = LibraryItemDialog(category, categories.new_item(category), self)
+        dialog.setWindowTitle(f"Add {spec['label'].lower()}")
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        item = dialog.result_item()
+        items = self.dataset.setdefault(category, [])
+
+        if any(existing["id"] == item["id"] for existing in items):
+            QMessageBox.warning(
+                self,
+                "Duplicate ID",
+                f"{spec['label']} already contains an item with ID '{item['id']}'.",
+            )
+            return
+
+        path = categories.item_path(self.root, category, item)
+        known_files = {existing.get("_file") for existing in items}
+        counter = 2
+        while path.exists() or path in known_files:
+            path = path.with_name(f"{path.stem}-{counter}.yaml")
+            counter += 1
+
+        item["_file"] = path
+        item["_category"] = category
+        items.append(item)
+        self.dirty_items[path] = category
+        preserved = self.library_selection() | {(category, item["id"])}
+        self.rebuild_library(preserved)
+        self.tabs.setCurrentWidget(self.library)
+        self.focus_library_item(category, item["id"])
+        self.update_preview()
+        self.statusBar().showMessage(
+            f"Added {path.name} — save to write it.", 6000
+        )
+
+    def focus_library_item(self, category: str, item_id: str) -> None:
+        for index in range(self.library.topLevelItemCount()):
+            category_item = self.library.topLevelItem(index)
+            data = category_item.data(0, Qt.ItemDataRole.UserRole) or {}
+            if data.get("category") != category:
+                continue
+            category_item.setExpanded(True)
+            for child_index in range(category_item.childCount()):
+                child = category_item.child(child_index)
+                child_data = child.data(0, Qt.ItemDataRole.UserRole) or {}
+                if child_data.get("id") == item_id:
+                    self.library.setCurrentItem(child)
+                    self.library.scrollToItem(child)
+                    return
+
+    def focus_achievement(self, role_id: str, achievement_id: str) -> None:
+        for index in range(self.tree.topLevelItemCount()):
+            role_item = self.tree.topLevelItem(index)
+            data = role_item.data(0, Qt.ItemDataRole.UserRole) or {}
+            if data.get("role") != role_id:
+                continue
+            role_item.setExpanded(True)
+            for child_index in range(role_item.childCount()):
+                child = role_item.child(child_index)
+                child_data = child.data(0, Qt.ItemDataRole.UserRole) or {}
+                if child_data.get("achievement") == achievement_id:
+                    self.tree.setCurrentItem(child)
+                    self.tree.scrollToItem(child)
+                    return
+
+    def edit_library_item(self) -> None:
+        if self.example:
+            return
+        selected = self.selected_library_item()
+        if selected is None:
+            self.statusBar().showMessage("Select a library item first.", 4000)
+            return
+        category, item = selected
+        spec = categories.SPECS[category]
+        dialog = LibraryItemDialog(category, item, self)
+        dialog.setWindowTitle(f"Edit {spec['label'].lower()}")
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        updated = dialog.result_item()
+        if any(
+            existing["id"] == updated["id"] and existing is not item
+            for existing in self.dataset.get(category, [])
+        ):
+            QMessageBox.warning(
+                self,
+                "Duplicate ID",
+                f"{spec['label']} already contains an item with ID '{updated['id']}'.",
+            )
+            return
+
+        old_id = item["id"]
+        old_file = item.get("_file")
+        previous = self.library_selection()
+        item.clear()
+        item.update(updated)
+        item["_file"] = old_file
+        item["_category"] = category
+        if old_file:
+            self.dirty_items[Path(old_file)] = category
+
+        preserved = set(previous)
+        if (category, old_id) in preserved:
+            preserved.discard((category, old_id))
+            preserved.add((category, item["id"]))
+        self.rebuild_library(preserved)
+        self.focus_library_item(category, item["id"])
+        self.update_preview()
+        self.statusBar().showMessage(
+            f"Updated {categories.item_title(category, item)} — save to keep.", 6000
+        )
+
+    def delete_library_item(self) -> None:
+        if self.example:
+            return
+        selected = self.selected_library_item()
+        if selected is None:
+            self.statusBar().showMessage("Select a library item first.", 4000)
+            return
+        category, item = selected
+        title = categories.item_title(category, item)
+        answer = QMessageBox.question(
+            self,
+            "Delete item",
+            f"Delete '{title}' and its YAML file?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        item_file = item.get("_file")
+        if item_file and Path(item_file).exists():
+            try:
+                Path(item_file).unlink()
+            except OSError as exc:
+                QMessageBox.critical(self, "Could not delete", str(exc))
+                return
+        if item_file:
+            self.dirty_items.pop(Path(item_file), None)
+        self.dataset[category].remove(item)
+        preserved = self.library_selection()
+        preserved.discard((category, item["id"]))
+        self.rebuild_library(preserved)
+        self.update_preview()
+        self.statusBar().showMessage("Library item deleted.", 5000)
 
     def edit_profile(self) -> None:
         if self.example:
@@ -1534,8 +2215,26 @@ class MainWindow(QMainWindow):
                 cvlib.save_role(role, path)
             except (cvlib.CVDatasetError, OSError) as exc:
                 errors.append(str(exc))
+
+        for path, category in sorted(self.dirty_items.items()):
+            item = next(
+                (
+                    entry
+                    for entry in self.dataset.get(category, [])
+                    if entry.get("_file") == path
+                ),
+                None,
+            )
+            if item is None:
+                continue
+            try:
+                cvlib.save_item(category, item, path)
+            except (cvlib.CVDatasetError, OSError) as exc:
+                errors.append(str(exc))
+
         if not errors:
             self.dirty_roles.clear()
+            self.dirty_items.clear()
 
         if errors:
             QMessageBox.critical(self, "Save failed", "\n".join(errors))
@@ -1559,7 +2258,7 @@ class MainWindow(QMainWindow):
         if example is None:
             return
 
-        if self.profile_dirty or self.dirty_roles:
+        if self.profile_dirty or self.dirty_roles or self.dirty_items:
             answer = QMessageBox.question(
                 self,
                 "Unsaved changes",
@@ -1578,7 +2277,7 @@ class MainWindow(QMainWindow):
             self.load_dataset(Path(path))
 
     def closeEvent(self, event: Any) -> None:
-        if not self.profile_dirty and not self.dirty_roles:
+        if not self.profile_dirty and not self.dirty_roles and not self.dirty_items:
             event.accept()
             return
         answer = QMessageBox.question(
@@ -1602,8 +2301,8 @@ class MainWindow(QMainWindow):
             self,
             "About CV Selector",
             "<h3>CV Selector</h3>"
-            "<p>Edit the YAML dataset, pick the bullets for a role, "
-            "highlight what matters, and export HTML.</p>"
+            "<p>Edit the YAML dataset, pick role bullets and category items, "
+            "choose a layout and theme, highlight what matters, and export HTML.</p>"
             "<p>QtWebEngine: "
             + ("available" if WEBENGINE_AVAILABLE else "not available on this machine")
             + "</p>",

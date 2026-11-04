@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import appearance
+import categories
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from jsonschema import Draft202012Validator
@@ -23,9 +24,6 @@ MONTHS = (
 )
 
 PROFILE = "profile.yaml"
-SKILLS = "skills.yaml"
-EDUCATION = "education.yaml"
-EXTRAS = "extras.yaml"
 
 DEFAULT_THEME = {
     "accent": "#1f4e5f",
@@ -68,21 +66,60 @@ def validate(document: Any, schema_path: Path, label: str) -> None:
     raise CVDatasetError("\n".join(lines))
 
 
+def _load_category(root: Path, category: str, schema_dir: Path) -> list[dict[str, Any]]:
+    """Load one directory of one-item-per-file category entries."""
+    spec = categories.SPECS[category]
+    schema = schema_dir / spec["schema"]
+    directory = root / spec["directory"]
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for path in sorted(directory.glob("*.yaml")):
+        if path.name.startswith(("_", ".")):
+            continue
+        item = load_yaml(path)
+        if item is None:
+            item = {}
+        validate(item, schema, f"{spec['directory']}/{path.name}")
+
+        item_id = item["id"]
+        if item_id in seen:
+            raise CVDatasetError(
+                f"{spec['directory']}/{path.name}: duplicate id '{item_id}'"
+            )
+        seen.add(item_id)
+        item["_file"] = path
+        item["_category"] = category
+        items.append(item)
+
+    return items
+
+
 def load_dataset(root: Path) -> dict[str, Any]:
-    """Load and validate the whole dataset. Roles get a private _file key."""
+    """Load and validate the whole dataset.
+
+    Roles and every non-role category get a private `_file` key. The loader
+    deliberately requires the category directories to exist, so a typo in a
+    directory name is an error rather than a silently empty CV section.
+    """
     schema_dir = root / "schema"
-    required = [root / name for name in (PROFILE, SKILLS, EDUCATION, EXTRAS)] + [schema_dir]
+    category_dirs = [
+        root / categories.SPECS[key]["directory"] for key in categories.CATEGORY_ORDER
+    ]
+    schemas = [schema_dir / "profile.schema.json", schema_dir / "role.schema.json"] + [
+        schema_dir / categories.SPECS[key]["schema"] for key in categories.CATEGORY_ORDER
+    ]
+    required = [root / PROFILE, root / "roles", schema_dir] + category_dirs + schemas
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise CVDatasetError("dataset is incomplete, missing: " + ", ".join(missing))
 
-    dataset: dict[str, Any] = {"root": root}
-    for filename in (PROFILE, SKILLS, EDUCATION, EXTRAS):
-        document = load_yaml(root / filename)
-        if document is None:
-            document = {}
-        validate(document, schema_dir / f"{filename[:-5]}.schema.json", filename)
-        dataset[filename[:-5]] = document
+    profile = load_yaml(root / PROFILE)
+    if profile is None:
+        profile = {}
+    validate(profile, schema_dir / "profile.schema.json", PROFILE)
+
+    dataset: dict[str, Any] = {"root": root, "profile": profile}
 
     role_schema = schema_dir / "role.schema.json"
     roles: list[dict[str, Any]] = []
@@ -113,6 +150,8 @@ def load_dataset(root: Path) -> dict[str, Any]:
         roles.append(role)
 
     dataset["roles"] = roles
+    for category in categories.CATEGORY_ORDER:
+        dataset[category] = _load_category(root, category, schema_dir)
     return dataset
 
 
@@ -208,36 +247,139 @@ def select_roles(roles: list[dict[str, Any]], manifest: dict[str, Any] | None) -
     return selected
 
 
-def select_skills(skills: dict[str, Any], manifest: dict[str, Any] | None) -> dict[str, Any]:
-    include = _include(manifest)
-    if "skills" not in include:
-        return skills
+def _selected_items(
+    items: list[dict[str, Any]],
+    value: Any,
+    label: str,
+) -> list[dict[str, Any]]:
+    """Apply one manifest include value to a category.
 
-    wanted = include.get("skills") or []
-    if not wanted:
-        return {"categories": []}
+    Missing or `true` selects everything, `false` selects nothing, and a list
+    selects item ids in the order written in the manifest. Unknown ids are a
+    hard error so a typo never silently drops a section.
+    """
+    if value is None or value is True:
+        return [deepcopy(item) for item in items]
+    if value is False:
+        return []
+    if not isinstance(value, list):
+        raise CVDatasetError(
+            f"manifest: include.{label} must be true, false, or a list of ids"
+        )
+    if not value:
+        return []
 
-    by_name = {category["name"]: category for category in skills["categories"]}
-    unknown = [name for name in wanted if name not in by_name]
+    by_id = {item["id"]: item for item in items}
+    unknown = [item for item in value if item not in by_id]
     if unknown:
-        raise CVDatasetError(f"manifest: unknown skill categor(y/ies): {', '.join(unknown)}")
-    return {"categories": [by_name[name] for name in wanted]}
+        raise CVDatasetError(
+            f"manifest: unknown {label} id(s): {', '.join(str(item) for item in unknown)}"
+        )
+    return [deepcopy(by_id[item]) for item in value]
 
 
-def extras_sections(extras: dict[str, Any], manifest: dict[str, Any] | None) -> dict[str, list[str]]:
+def _public_item(item: dict[str, Any]) -> dict[str, Any]:
+    return {key: deepcopy(value) for key, value in item.items() if not key.startswith("_")}
+
+
+def select_core_skills(
+    items: list[dict[str, Any]], manifest: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Group selected skill files into the categories used by all templates."""
     include = _include(manifest)
-    keys = ("certifications", "open_source", "talks", "languages")
+
+    if "core_skills" in include:
+        selected = _selected_items(items, include.get("core_skills"), "core_skills")
+    elif "skills" in include:
+        # Compatibility with manifests written before core skills became files.
+        wanted = include.get("skills") or []
+        if not wanted:
+            selected = []
+        else:
+            available = {item.get("group") or "Core skills" for item in items}
+            unknown = [name for name in wanted if name not in available]
+            if unknown:
+                raise CVDatasetError(
+                    f"manifest: unknown skill categor(y/ies): {', '.join(unknown)}"
+                )
+            selected = [
+                deepcopy(item)
+                for item in items
+                if (item.get("group") or "Core skills") in wanted
+            ]
+    else:
+        selected = [deepcopy(item) for item in items]
+
+    groups: dict[str, list[str]] = {}
+    for item in selected:
+        group = str(item.get("group") or "Core skills")
+        groups.setdefault(group, []).append(str(item.get("text", "")))
+
+    return {
+        "categories": [
+            {"name": name, "items": texts} for name, texts in groups.items()
+        ]
+    }
+
+
+def select_education(
+    items: list[dict[str, Any]], manifest: dict[str, Any] | None
+) -> dict[str, Any]:
+    include = _include(manifest)
+    if "education" not in include:
+        selected = [deepcopy(item) for item in items]
+    else:
+        selected = _selected_items(items, include.get("education"), "education")
+    return {"entries": selected}
+
+
+def _extra_selection(
+    dataset: dict[str, Any],
+    manifest: dict[str, Any] | None,
+    category: str,
+) -> list[dict[str, Any]]:
+    include = _include(manifest)
     if include.get("extras") is False:
-        return {key: [] for key in keys}
-    return {key: list(extras.get(key, [])) for key in keys}
+        return []
+    if category not in include:
+        return [deepcopy(item) for item in dataset.get(category, [])]
+    return _selected_items(dataset.get(category, []), include.get(category), category)
 
 
-def extras_items(extras: dict[str, Any], manifest: dict[str, Any] | None) -> list[str]:
-    sections = extras_sections(extras, manifest)
+def extras_sections(
+    dataset: dict[str, Any], manifest: dict[str, Any] | None
+) -> dict[str, list[str]]:
+    sections: dict[str, list[str]] = {}
+    for category in categories.CATEGORY_ORDER:
+        if category == "core_skills" or category == "education":
+            continue
+        sections[category] = [
+            categories.extra_text(category, item)
+            for item in _extra_selection(dataset, manifest, category)
+        ]
+    # Kept for old templates and old manifests. The new category set has no
+    # talks folder, so this is normally empty.
+    sections["talks"] = []
+    return sections
+
+
+def extras_items(
+    dataset: dict[str, Any], manifest: dict[str, Any] | None
+) -> list[str]:
+    sections = extras_sections(dataset, manifest)
     items: list[str] = []
-    for key in ("certifications", "open_source", "talks", "languages"):
-        items.extend(sections[key])
+    for category in ("certifications", "open_source", "projects", "hobbies", "languages", "talks"):
+        items.extend(sections.get(category, []))
     return items
+
+
+def selected_projects(
+    dataset: dict[str, Any], manifest: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    return [
+        _public_item(item)
+        for item in _extra_selection(dataset, manifest, "projects")
+    ]
 
 
 def build_context(
@@ -251,11 +393,6 @@ def build_context(
     added to the Jinja `theme` variable and applied to the page after rendering.
     """
     profile = dataset["profile"]
-    include = _include(manifest)
-
-    education = dataset["education"]
-    if include.get("education") is False:
-        education = {"entries": []}
 
     roles = select_roles(dataset["roles"], manifest)
     for role in roles:
@@ -265,11 +402,12 @@ def build_context(
         "profile": profile,
         "contact": contact_items(profile),
         "theme": {**theme_from(profile), **appearance.clean(overrides)},
-        "skills": select_skills(dataset["skills"], manifest),
+        "skills": select_core_skills(dataset.get("core_skills", []), manifest),
         "roles": roles,
-        "education": education,
-        "extras": extras_sections(dataset["extras"], manifest),
-        "extras_items": extras_items(dataset["extras"], manifest),
+        "education": select_education(dataset.get("education", []), manifest),
+        "extras": extras_sections(dataset, manifest),
+        "extras_items": extras_items(dataset, manifest),
+        "projects": selected_projects(dataset, manifest),
     }
 
 
@@ -398,6 +536,11 @@ def save_profile(profile: dict[str, Any], path: Path) -> None:
 
 def save_role(role: dict[str, Any], path: Path) -> None:
     write_document(path, role_mapping(role))
+
+
+def save_item(category: str, item: dict[str, Any], path: Path) -> None:
+    """Save one non-role category item, stripping GUI-only private keys."""
+    write_document(path, categories.item_mapping(category, item))
 
 
 def save_manifest(path: Path, manifest: dict[str, Any]) -> None:

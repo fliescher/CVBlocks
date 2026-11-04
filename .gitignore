@@ -9,9 +9,31 @@ out/
 !/cv-data/roles/
 !/cv-data/applications/
 !/cv-data/schema/
+!/cv-data/core-skills/
+!/cv-data/education/
+!/cv-data/certifications/
+!/cv-data/open-source/
+!/cv-data/hobbies/
+!/cv-data/languages/
+!/cv-data/projects/
 
 # Keep reusable templates
 /cv-data/roles/*
 !/cv-data/roles/_TEMPLATE.yaml
+
+/cv-data/core-skills/*
+!/cv-data/core-skills/_TEMPLATE.yaml
+/cv-data/education/*
+!/cv-data/education/_TEMPLATE.yaml
+/cv-data/certifications/*
+!/cv-data/certifications/_TEMPLATE.yaml
+/cv-data/open-source/*
+!/cv-data/open-source/_TEMPLATE.yaml
+/cv-data/hobbies/*
+!/cv-data/hobbies/_TEMPLATE.yaml
+/cv-data/languages/*
+!/cv-data/languages/_TEMPLATE.yaml
+/cv-data/projects/*
+!/cv-data/projects/_TEMPLATE.yaml
 
 /cv-data/applications/*

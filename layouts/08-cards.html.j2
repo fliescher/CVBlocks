@@ -154,6 +154,8 @@
       <ul class="plain">
         {% if extras.certifications %}<li>{{ extras.certifications | join('; ') }}</li>{% endif %}
         {% if extras.open_source %}<li>{{ extras.open_source | join('; ') }}</li>{% endif %}
+        {% if extras.projects %}<li><b>Projects:</b> {{ extras.projects | join('; ') }}</li>{% endif %}
+        {% if extras.hobbies %}<li><b>Hobbies:</b> {{ extras.hobbies | join('; ') }}</li>{% endif %}
         {% if extras.talks %}<li>{{ extras.talks | join('; ') }}</li>{% endif %}
         {% if extras.languages %}<li>{{ extras.languages | join(', ') }}</li>{% endif %}
       </ul>

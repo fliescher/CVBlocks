@@ -1,0 +1,5 @@
+id: pgqueue
+name: pgqueue
+role: Maintainer
+url: https://github.com/example/pgqueue
+text: Postgres-backed job queue; 2.1k stars

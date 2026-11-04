@@ -1,6 +1,7 @@
 # Copy into applications/<YYYY-MM-company>/manifest.yaml.
-# Omit `roles` to include every role, or omit `skills` to include every
-# category. An explicit empty list includes nothing.
+# Omit an include key to include every item in that category. An explicit
+# empty list includes nothing. Item IDs are the `id` field in each category
+# file; role achievements are nested inside the role entry.
 
 application:
   company: ""
@@ -13,8 +14,10 @@ include:
   #   - id: acme-senior
   #     achievements: [checkout-latency, on-call-reliability]
   #   - id: globex-engineer        # a bare id includes every achievement
-  # skills:
-  #   - Languages
-  #   - Reliability
-  education: true
-  extras: true
+  # core_skills: [go, python, kubernetes]
+  # education: [bsc-computer-science]
+  # certifications: [aws-solutions-architect]
+  # open_source: [example-queue]
+  # hobbies: [cycling]
+  # languages: [english, german]
+  # projects: [billing-rewrite]
