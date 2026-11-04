@@ -516,6 +516,11 @@ margins **Default**, **Background graphics on**. The filename convention
   manifest references an item ID that is not in that category folder.
 - `unknown skill categor(y/ies)`: an older manifest uses group names from
   `include.skills`; switch to `include.core_skills` with item IDs.
+- **`libva error: .../nouveau_drv_video.so init failed` on Linux.** Chromium's
+  GPU process probes VA-API even though this app only previews static HTML. The
+  GUI disables WebEngine's GPU path by default to avoid that noisy error. If
+  you want Chromium's default GPU setup, launch with
+  `CV_ENABLE_WEBENGINE_GPU=1 python launch_gui.py`.
 - **The preview says QtWebEngine is missing.** The app still edits, saves, and
   exports; use `View → Open preview in browser`. On Fedora,
   `sudo dnf install krb5-libs` provides the missing library for live preview.

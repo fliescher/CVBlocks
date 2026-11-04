@@ -21,6 +21,17 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+# The preview only renders static HTML, so it does not need GPU video
+# acceleration. On Linux systems using Nouveau, Chromium probes VA-API at
+# startup and prints:
+#     libva error: .../nouveau_drv_video.so init failed
+# Disabling WebEngine's GPU path avoids that probe and the noisy error. Set
+# CV_ENABLE_WEBENGINE_GPU=1 to keep Chromium's default GPU setup.
+if sys.platform.startswith("linux") and os.environ.get("CV_ENABLE_WEBENGINE_GPU") != "1":
+    flags = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "").strip()
+    if "--disable-gpu" not in flags.split():
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = f"{flags} --disable-gpu".strip()
+
 import appearance
 import categories
 import cvlib
