@@ -2,3 +2,16 @@
 __pycache__/
 *.pyc
 out/
+# Ignore everything in cv-data
+/cv-data/*
+
+# Keep the template directories accessible
+!/cv-data/roles/
+!/cv-data/applications/
+!/cv-data/schema/
+
+# Keep reusable templates
+/cv-data/roles/*
+!/cv-data/roles/_TEMPLATE.yaml
+
+/cv-data/applications/*
