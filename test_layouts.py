@@ -6,6 +6,7 @@ when missing.
 """
 import pathlib
 import re
+import shutil
 import sys
 import tempfile
 
@@ -103,6 +104,16 @@ assert context["extras"]["languages"] == ["English (C2)"]
 assert context["projects"][0]["name"] == "Billing rewrite"
 assert "Billing rewrite" in cvlib.render_dataset(dataset)
 print("category context ok")
+
+with tempfile.TemporaryDirectory() as tmp:
+    root = pathlib.Path(tmp) / "data"
+    shutil.copytree(ROOT / "examples" / "data", root)
+    profile_text = (root / "profile.yaml").read_text(encoding="utf-8")
+    (root / "profile.example.yaml").write_text(profile_text, encoding="utf-8")
+    (root / "profile.yaml").unlink()
+    fallback = cvlib.load_dataset(root)
+    assert fallback["profile"]["name"] == "Jordan Avery", fallback["profile"]
+print("profile.example.yaml fallback ok")
 
 filtered = {
     "include": {

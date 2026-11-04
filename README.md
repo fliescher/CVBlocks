@@ -55,8 +55,12 @@ python -m venv .venv
 .venv\Scripts\python src\gui.py
 ```
 
-The repository ships empty, so the first render is a blank page. Fill in
-`cv-data/profile.yaml`, add a role, and run it again.
+The repository ships empty, so the first render is a blank page. Copy
+`cv-data/profile.example.yaml` to `cv-data/profile.yaml`, fill it in, add a
+role, and run it again. The app does this fallback automatically: if
+`profile.yaml` does not exist, it loads `profile.example.yaml`; saving the
+profile in the GUI creates `cv-data/profile.yaml`. That local file is ignored
+by git, so pulls cannot overwrite your personal details.
 
 To explore the ten bundled layouts instead, start the GUI and choose
 `File → Load example…`, or see `examples/README.md` for the command-line
@@ -111,7 +115,8 @@ letter.
 
 ```
 cv-data/                       the dataset — source of truth
-  profile.yaml                 name, contact, summary paragraphs
+  profile.example.yaml         tracked profile template
+  profile.yaml                 your local profile (git-ignored; created on save)
   roles/<year>-<company>.yaml  one file per role, achievements nested inside
   roles/_TEMPLATE.yaml         copy this; files starting with "_" are ignored
   core-skills/<skill>.yaml     one skill per file, grouped by `group`

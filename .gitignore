@@ -5,6 +5,10 @@ out/
 # Ignore everything in cv-data
 /cv-data/*
 
+# Keep the reusable profile template; each user's profile.yaml stays local.
+!/cv-data/profile.example.yaml
+/cv-data/profile.yaml
+
 # Keep the template directories accessible
 !/cv-data/roles/
 !/cv-data/applications/

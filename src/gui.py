@@ -2514,7 +2514,7 @@ class MainWindow(QMainWindow):
         errors: list[str] = []
         try:
             if self.profile_dirty:
-                cvlib.save_profile(self.dataset["profile"], self.root / "profile.yaml")
+                cvlib.save_profile(self.dataset["profile"], self.root / cvlib.PROFILE)
                 self.profile_dirty = False
         except (cvlib.CVDatasetError, OSError) as exc:
             errors.append(str(exc))

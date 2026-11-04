@@ -8,6 +8,9 @@ examples, and the render commands.
 
 Quick reminders:
 
+- `profile.example.yaml` is the tracked template. Your personal
+  `profile.yaml` is ignored by git; the app loads the example when it does not
+  exist, and `Save` creates the local file.
 - One role per file in `roles/`; copy `roles/_TEMPLATE.yaml` to start.
 - Every other category is also one item per file: `core-skills/`,
   `education/`, `certifications/`, `open-source/`, `hobbies/`, `languages/`,

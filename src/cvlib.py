@@ -24,6 +24,7 @@ MONTHS = (
 )
 
 PROFILE = "profile.yaml"
+PROFILE_EXAMPLE = "profile.example.yaml"
 
 DEFAULT_THEME = {
     "accent": "#1f4e5f",
@@ -109,15 +110,20 @@ def load_dataset(root: Path) -> dict[str, Any]:
     schemas = [schema_dir / "profile.schema.json", schema_dir / "role.schema.json"] + [
         schema_dir / categories.SPECS[key]["schema"] for key in categories.CATEGORY_ORDER
     ]
-    required = [root / PROFILE, root / "roles", schema_dir] + category_dirs + schemas
+    # The personal profile is intentionally untracked. Fresh checkouts load the
+    # tracked example until the GUI or the user creates profile.yaml.
+    profile_path = root / PROFILE
+    if not profile_path.exists():
+        profile_path = root / PROFILE_EXAMPLE
+    required = [profile_path, root / "roles", schema_dir] + category_dirs + schemas
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise CVDatasetError("dataset is incomplete, missing: " + ", ".join(missing))
 
-    profile = load_yaml(root / PROFILE)
+    profile = load_yaml(profile_path)
     if profile is None:
         profile = {}
-    validate(profile, schema_dir / "profile.schema.json", PROFILE)
+    validate(profile, schema_dir / "profile.schema.json", profile_path.name)
 
     dataset: dict[str, Any] = {"root": root, "profile": profile}
 
