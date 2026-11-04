@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name }} — CV</title>
+<title>{{ profile.name }} — {{ "Cover Letter" if cover_letter else "CV" }}</title>
 <style>
   :root {
     --accent: {{ theme.accent }};
@@ -102,6 +102,7 @@
       {% endfor %}
     </ul>
 
+    {% if not cover_letter %}
     {% if skills.categories %}
     <h2>Skills</h2>
     {% for cat in skills.categories %}
@@ -124,9 +125,13 @@
       {% for language in extras.languages %}<li>{{ language }}</li>{% endfor %}
     </ul>
     {% endif %}
+    {% endif %}
   </aside>
 
   <section class="main">
+    {% if cover_letter %}
+    {{ cover_letter_html | safe }}
+    {% else %}
     {% if profile.summary %}
     <h2>Profile</h2>
     <div class="summary">
@@ -155,6 +160,7 @@
       {% if extras.hobbies %}<li><b>Hobbies:</b> {{ extras.hobbies | join('; ') }}</li>{% endif %}
       {% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}
     </ul>
+    {% endif %}
     {% endif %}
   </section>
 </main>

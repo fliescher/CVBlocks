@@ -44,6 +44,10 @@ the selection, the Library checkboxes, layouts, theme presets, and colours, but
 actions are disabled. Use `File → Open dataset…` to return to your own dataset
 and the default template.
 
+The example templates also support the cover-letter preview: switch the preview
+to `Cover letter` to see the same layout with only the letter body. Editing the
+letter is disabled while an example is loaded.
+
 ## Render an example from the command line
 
 ```sh

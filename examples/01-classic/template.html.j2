@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name }} — Curriculum Vitae</title>
+<title>{{ profile.name }} — {{ "Cover Letter" if cover_letter else "Curriculum Vitae" }}</title>
 <style>
   :root {
     --accent: {{ theme.accent }};
@@ -99,6 +99,10 @@
     </div>
   </header>
 
+  {% if cover_letter %}
+  {{ cover_letter_html | safe }}
+  {% else %}
+
   {% if profile.summary %}
   <section aria-labelledby="summary">
     <h2 id="summary">Profile</h2>
@@ -156,6 +160,7 @@
       {% if extras.languages %}<li><span class="label">Languages:</span> {{ extras.languages | join(', ') }}</li>{% endif %}
     </ul>
   </section>
+  {% endif %}
   {% endif %}
 </main>
 </body>

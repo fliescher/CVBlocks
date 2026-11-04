@@ -37,3 +37,8 @@ out/
 !/cv-data/projects/_TEMPLATE.yaml
 
 /cv-data/applications/*
+
+# Personal cover letter; keep the template and notes
+/cover_letter/*
+!/cover_letter/README.md
+!/cover_letter/_TEMPLATE.yaml

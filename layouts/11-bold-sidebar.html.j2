@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name }} — Curriculum Vitae</title>
+<title>{{ profile.name }} — {{ "Cover Letter" if cover_letter else "Curriculum Vitae" }}</title>
 <style>
   :root {
     --accent: {{ theme.accent }};
@@ -58,11 +58,16 @@
     <p class="headline">{{ profile.headline }}</p>
     <h2>Contact</h2>
     <ul class="plain">{% for item in contact %}<li>{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}{{ item.text }}{% endif %}</li>{% endfor %}</ul>
+    {% if not cover_letter %}
     {% if skills.categories %}<h2>Skills</h2>{% for cat in skills.categories %}<p class="skill"><b>{{ cat.name }}</b><span>{{ cat['items'] | join(', ') }}</span></p>{% endfor %}{% endif %}
     {% if education.entries %}<h2>Education</h2><ul class="plain">{% for entry in education.entries %}<li><b>{{ entry.degree }}</b><br>{{ entry.institution }}, {{ entry.year }}</li>{% endfor %}</ul>{% endif %}
     {% if extras.languages %}<h2>Languages</h2><ul class="plain">{% if extras.languages %}<li>{{ extras.languages | join(', ') }}</li>{% endif %}</ul>{% endif %}
+    {% endif %}
   </aside>
   <main class="main">
+    {% if cover_letter %}
+    {{ cover_letter_html | safe }}
+    {% else %}
     {% if profile.summary %}<section class="summary"><h2>Profile</h2>{% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}</section>{% endif %}
     <section>
       <h2>Experience</h2>
@@ -77,6 +82,7 @@
     </section>
     {% if extras.certifications or extras.open_source or extras.projects or extras.hobbies or extras.talks %}
     <section><h2>Selected extras</h2><ul class="plain">{% if extras.certifications %}<li><b>Certifications:</b> {{ extras.certifications | join('; ') }}</li>{% endif %}{% if extras.open_source %}<li><b>Open source:</b> {{ extras.open_source | join('; ') }}</li>{% endif %}{% if extras.projects %}<li><b>Projects:</b> {{ extras.projects | join('; ') }}</li>{% endif %}{% if extras.hobbies %}<li><b>Hobbies:</b> {{ extras.hobbies | join('; ') }}</li>{% endif %}{% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}</ul></section>
+    {% endif %}
     {% endif %}
   </main>
 </div>

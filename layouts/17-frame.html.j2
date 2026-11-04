@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name }} — Curriculum Vitae</title>
+<title>{{ profile.name }} — {{ "Cover Letter" if cover_letter else "Curriculum Vitae" }}</title>
 <style>
   :root {
     --accent: {{ theme.accent }};
@@ -54,6 +54,10 @@
 <body>
 <div class="sheet"><div class="frame">
   <header><h1>{{ profile.name }}</h1><p class="headline">{{ profile.headline }}</p><div class="contact">{% for item in contact %}{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}<span>{{ item.text }}</span>{% endif %}{% endfor %}</div></header>
+
+  {% if cover_letter %}
+  {{ cover_letter_html | safe }}
+  {% else %}
   {% if profile.summary %}<section class="summary"><h2>Profile</h2>{% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}</section>{% endif %}
   <section>
     <h2>Experience</h2>
@@ -68,6 +72,7 @@
   {% if skills.categories %}<section><h2>Skills</h2>{% for cat in skills.categories %}<p class="skill"><b>{{ cat.name }}</b><span>{{ cat['items'] | join(', ') }}</span></p>{% endfor %}</section>{% endif %}
   {% if education.entries %}<section><h2>Education</h2><ul class="plain">{% for entry in education.entries %}<li><b>{{ entry.degree }}</b><br>{{ entry.institution }}, {{ entry.year }}</li>{% endfor %}</ul></section>{% endif %}
   {% if extras_items %}<section><h2>Extras</h2><ul class="plain">{% if extras.certifications %}<li><b>Certifications:</b> {{ extras.certifications | join('; ') }}</li>{% endif %}{% if extras.open_source %}<li><b>Open source:</b> {{ extras.open_source | join('; ') }}</li>{% endif %}{% if extras.projects %}<li><b>Projects:</b> {{ extras.projects | join('; ') }}</li>{% endif %}{% if extras.hobbies %}<li><b>Hobbies:</b> {{ extras.hobbies | join('; ') }}</li>{% endif %}{% if extras.talks %}<li><b>Talks:</b> {{ extras.talks | join('; ') }}</li>{% endif %}{% if extras.languages %}<li><b>Languages:</b> {{ extras.languages | join(', ') }}</li>{% endif %}</ul></section>{% endif %}
+  {% endif %}
 </div></div>
 </body>
 </html>

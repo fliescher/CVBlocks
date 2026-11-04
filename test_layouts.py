@@ -147,6 +147,54 @@ assert appearance.css_for({}) == "" and appearance.inject("<html></html>", {}) =
 assert appearance.loads("not json") == {} and appearance.loads(appearance.dumps(look)) == look
 print("appearance validation ok")
 
+import cover_letter  # noqa: E402
+
+letter = {
+    "paragraphs": [
+        {"runs": [{"text": "Dear Hiring Manager,"}]},
+        {"runs": [
+            {"text": "I build "},
+            {"text": "reliable", "bold": True},
+            {"text": " and "},
+            {"text": "fast", "italic": True},
+            {"text": " systems."},
+            {"text": " Big", "size": 14},
+        ]},
+        {"runs": []},
+    ]
+}
+for item in items:
+    html = cover_letter.render(dataset, letter, item["template"])
+    assert "cover-letter" in html, item["slug"]
+    assert "Dear Hiring Manager," in html, item["slug"]
+    assert "<strong>reliable</strong>" in html, item["slug"]
+    assert "<em>fast</em>" in html, item["slug"]
+    assert "font-size: 14pt" in html, item["slug"]
+    assert "Jordan Avery" in html, item["slug"]
+    assert "Lumen" not in html and "Kubernetes" not in html, (
+        f"{item['slug']}: cover letter leaked CV sections"
+    )
+    assert "{{" not in html and "{%" not in html, f"{item['slug']}: unrendered Jinja"
+print("cover letter renders with all 20 layouts")
+
+default_letter = cover_letter.render(dataset, letter)
+assert "cover-letter" in default_letter and "Lumen" not in default_letter
+for example in sorted((ROOT / "examples").glob("*/template.html.j2")):
+    assert cover_letter.supports_template(example), example
+    html = cover_letter.render(dataset, letter, example)
+    assert "cover-letter" in html and "Lumen" not in html, example
+print("cover letter renders with the default and example templates")
+
+with tempfile.TemporaryDirectory() as tmp:
+    saved_path = pathlib.Path(tmp) / "cover_letter" / "cover_letter.yaml"
+    saved = cover_letter.save(saved_path, letter)
+    assert saved_path.is_file()
+    assert cover_letter.load(saved_path) == saved
+    assert saved["paragraphs"][1]["runs"][1]["bold"] is True
+    assert saved["paragraphs"][1]["runs"][3]["italic"] is True
+    assert saved["paragraphs"][1]["runs"][5]["size"] == 14
+print("cover letter save/load round-trip ok")
+
 # Two layouts must not collapse into the same markup.
 bodies = {re.sub(r"\s+", " ", i["template"].read_text()) for i in items}
 assert len(bodies) == 20

@@ -402,6 +402,9 @@ def build_context(
         "profile": profile,
         "contact": contact_items(profile),
         "theme": {**theme_from(profile), **appearance.clean(overrides)},
+        # Layouts use this to replace their CV sections with a cover letter.
+        # None keeps every existing template on the normal CV path.
+        "cover_letter": None,
         "skills": select_core_skills(dataset.get("core_skills", []), manifest),
         "roles": roles,
         "education": select_education(dataset.get("education", []), manifest),

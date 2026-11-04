@@ -2,7 +2,8 @@
 
 A CV that lives in plain YAML files: one file per item, one manifest per job
 application. Validate the dataset, pick the roles, items, skills, projects,
-and other entries you want, render a tailored HTML CV, print it to PDF.
+and other entries you want, render a tailored HTML CV, print it to PDF — and
+write a matching cover letter in the same layout.
 
 No database, no lock-in. Every fact is a text file you can read, diff, and
 edit by hand — or through the PySide6 desktop app, which writes the same files.
@@ -20,7 +21,6 @@ edit by hand — or through the PySide6 desktop app, which writes the same files
 
 ## Future Features
 
-- [ ] provide the same layouts for a cover letter
 - [ ] rank category items and achievements against a pasted job description
 
 ## Quick start
@@ -62,6 +62,51 @@ To explore the ten bundled layouts instead, start the GUI and choose
 `File → Load example…`, or see `examples/README.md` for the command-line
 version.
 
+## Cover letter
+
+The GUI can keep a cover letter in the same visual layout as the CV. It reuses
+the selected layout, theme, accent and highlight colours, font, and page frame;
+only the CV sections are replaced with the letter text.
+
+- **Edit** with `Edit → Edit cover letter…`, the toolbar's **Cover letter**
+  button, or `Ctrl+L`.
+- **Format** with bold, italic, and a font-size selector. These are the only
+  formatting controls for now; the editor is intentionally small.
+- **Preview** by choosing `Cover letter` next to the preview. Switch back to
+  `CV` at any time. `Export HTML…` and `Open in browser` use whichever document
+  is selected.
+- **Storage** is `cover_letter/cover_letter.yaml`. It is personal data and is
+  ignored by git; `cover_letter/_TEMPLATE.yaml` documents the format. The
+  profile header still comes from the open CV dataset, so keep that profile
+  up to date.
+
+A letter file is just paragraphs of rich-text runs:
+
+```yaml
+paragraphs:
+  - runs:
+      - text: "Dear Hiring Manager,"
+  - runs:
+      - text: "I am applying for the "
+      - text: "Staff Platform Engineer"
+        bold: true
+      - text: " role."
+  - runs:
+      - text: "Reliability matters to me because "
+      - text: "it is invisible when it works"
+        italic: true
+      - text: "."
+```
+
+`bold` and `italic` are optional booleans; `size` is an optional point size
+between 6 and 72. Empty paragraphs become blank lines. The GUI writes the file
+and leaves `_TEMPLATE.yaml` untouched.
+
+The bundled layouts and the ten example templates all support cover letters.
+A custom dataset template that does not contain the `cover_letter_html` hook
+falls back to the default template instead of showing CV sections on the
+letter.
+
 ## Layout
 
 ```
@@ -85,6 +130,7 @@ src/categories.py              category registry and shared item helpers (no Qt)
 src/layouts.py                 finds the bundled layouts in layouts/ (no Qt)
 src/themes.py                  20 built-in theme presets (no Qt)
 src/appearance.py              optional text/backdrop/font overrides (no Qt)
+src/cover_letter.py            cover-letter storage/render helpers (no Qt)
 src/render.py                  command-line renderer
 src/gui.py                     PySide6 desktop app
 templates/cv.html.j2           default single-column A4 template (Jinja2)
@@ -92,7 +138,10 @@ layouts/                       20 selectable layouts: index.yaml + NN-name.html.
 examples/                      10 bundled layouts with a shared fictional dataset
   data/                        sample profile and all category folders
   01-classic/ … 10-elegant/    example.yaml + template.html.j2 per layout
-out/                           generated CVs (git-ignored)
+cover_letter/                  personal cover letter (git-ignored)
+  _TEMPLATE.yaml               example rich-text structure
+  README.md                    format notes
+out/                           generated CVs and cover letters (git-ignored)
 ```
 
 ## Dataset conventions

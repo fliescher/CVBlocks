@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name }} — CV</title>
+<title>{{ profile.name }} — {{ "Cover Letter" if cover_letter else "CV" }}</title>
 <style>
   :root {
     --accent: {{ theme.accent }};
@@ -79,13 +79,17 @@
 <body>
 <main class="sheet">
   <header>
-    <p class="prompt">cat {{ profile.name | lower | replace(' ', '-') }}.cv</p>
+    <p class="prompt">cat {{ profile.name | lower | replace(' ', '-') }}.{{ "letter" if cover_letter else "cv" }}</p>
     <h1 class="name">{{ profile.name }}</h1>
     <p class="headline">{{ profile.headline }}</p>
     <div class="contact">
       {% for item in contact %}{% if item.href %}<a href="{{ item.href }}">{{ item.text }}</a>{% else %}<span>{{ item.text }}</span>{% endif %}{% endfor %}
     </div>
   </header>
+
+  {% if cover_letter %}
+  {{ cover_letter_html | safe }}
+  {% else %}
 
   {% if profile.summary %}
   <section>
@@ -146,6 +150,7 @@
     </section>
     {% endif %}
   </div>
+  {% endif %}
 </main>
 </body>
 </html>

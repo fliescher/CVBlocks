@@ -34,12 +34,23 @@ if sys.platform.startswith("linux") and os.environ.get("CV_ENABLE_WEBENGINE_GPU"
 
 import appearance
 import categories
+import cover_letter
 import cvlib
 import layouts
 import themes
 
 from PySide6.QtCore import QCoreApplication, QSettings, QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QBrush, QColor, QDesktopServices, QIcon, QPixmap
+from PySide6.QtGui import (
+    QAction,
+    QBrush,
+    QColor,
+    QDesktopServices,
+    QFont,
+    QIcon,
+    QPixmap,
+    QTextCharFormat,
+    QTextCursor,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -69,6 +80,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QTextBrowser,
+    QTextEdit,
     QToolBar,
     QToolButton,
     QTreeWidget,
@@ -864,6 +876,198 @@ class PreviewPane(QWidget):
             self.view.setHtml(f"<p>{message}</p>")
 
 
+class CoverLetterDialog(QDialog):
+    """Small rich-text editor for the cover letter.
+
+    The document is intentionally limited to what the storage format supports:
+    paragraphs, bold, italic, and a point size per run. QTextEdit supplies the
+    familiar editing behaviour without turning the YAML into an HTML document.
+    """
+
+    def __init__(
+        self,
+        document: dict[str, Any],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Edit cover letter")
+        self.resize(880, 700)
+        self._updating_format = False
+        self.result_document = deepcopy(document)
+
+        self.editor = QTextEdit()
+        self.editor.setAcceptRichText(True)
+        self.editor.setPlaceholderText("Write your cover letter here…")
+        self.editor.setTabChangesFocus(False)
+        default_font = self.editor.font()
+        default_font.setPointSizeF(cover_letter.DEFAULT_SIZE)
+        self.editor.document().setDefaultFont(default_font)
+        self.editor.cursorPositionChanged.connect(self.sync_format_controls)
+
+        self.bold_button = QToolButton()
+        self.bold_button.setText("B")
+        self.bold_button.setCheckable(True)
+        self.bold_button.setShortcut("Ctrl+B")
+        self.bold_button.setToolTip("Bold (Ctrl+B)")
+        bold_font = self.bold_button.font()
+        bold_font.setBold(True)
+        self.bold_button.setFont(bold_font)
+        self.bold_button.clicked.connect(self.apply_bold)
+
+        self.italic_button = QToolButton()
+        self.italic_button.setText("I")
+        self.italic_button.setCheckable(True)
+        self.italic_button.setShortcut("Ctrl+I")
+        self.italic_button.setToolTip("Italic (Ctrl+I)")
+        italic_font = self.italic_button.font()
+        italic_font.setItalic(True)
+        self.italic_button.setFont(italic_font)
+        self.italic_button.clicked.connect(self.apply_italic)
+
+        self.size_combo = QComboBox()
+        self.size_combo.setToolTip("Font size for the selection or the next typed text")
+        for size in (
+            8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 24, 28, 32,
+        ):
+            self.size_combo.addItem(f"{size:g}")
+        self.size_combo.currentTextChanged.connect(self.apply_size)
+
+        toolbar = QHBoxLayout()
+        toolbar.addWidget(QLabel("Style"))
+        toolbar.addWidget(self.bold_button)
+        toolbar.addWidget(self.italic_button)
+        toolbar.addSpacing(12)
+        toolbar.addWidget(QLabel("Size"))
+        toolbar.addWidget(self.size_combo)
+        toolbar.addStretch(1)
+
+        hint = QLabel(
+            "The letter uses the currently selected CV layout, colours, and font. "
+            "Formatting supports bold, italic, and font size."
+        )
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #6b7280;")
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Save")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addLayout(toolbar)
+        layout.addWidget(hint)
+        layout.addWidget(self.editor, 1)
+        layout.addWidget(buttons)
+
+        self.load_document(self.result_document)
+
+    def load_document(self, document: dict[str, Any]) -> None:
+        self.editor.clear()
+        cursor = self.editor.textCursor()
+        cursor.beginEditBlock()
+        for index, block in enumerate(document.get("paragraphs", [])):
+            if index:
+                cursor.insertBlock()
+            for run in block.get("runs", []):
+                fmt = QTextCharFormat()
+                fmt.setFontPointSize(float(run.get("size") or cover_letter.DEFAULT_SIZE))
+                fmt.setFontWeight(
+                    QFont.Weight.Bold if run.get("bold") else QFont.Weight.Normal
+                )
+                fmt.setFontItalic(bool(run.get("italic")))
+                cursor.insertText(str(run.get("text", "")), fmt)
+        cursor.endEditBlock()
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+        self.editor.setTextCursor(cursor)
+        self.sync_format_controls()
+
+    def document_from_editor(self) -> dict[str, Any]:
+        paragraphs: list[dict[str, Any]] = []
+        block = self.editor.document().begin()
+        while block.isValid():
+            runs: list[dict[str, Any]] = []
+            iterator = block.begin()
+            while not iterator.atEnd():
+                fragment = iterator.fragment()
+                if fragment.isValid():
+                    text = fragment.text()
+                    if text:
+                        fmt = fragment.charFormat()
+                        run: dict[str, Any] = {"text": text}
+                        if int(fmt.fontWeight()) >= int(QFont.Weight.Bold):
+                            run["bold"] = True
+                        if fmt.fontItalic():
+                            run["italic"] = True
+                        size = fmt.fontPointSize()
+                        if (
+                            size
+                            and abs(size - cover_letter.DEFAULT_SIZE) > 0.05
+                            and cover_letter.MIN_SIZE <= size <= cover_letter.MAX_SIZE
+                        ):
+                            run["size"] = round(size, 1)
+                        runs.append(run)
+                iterator += 1
+            paragraphs.append({"runs": runs})
+            block = block.next()
+
+        while paragraphs and not paragraphs[-1]["runs"]:
+            paragraphs.pop()
+        return cover_letter.normalize({"paragraphs": paragraphs})
+
+    def _set_size_combo(self, size: float) -> None:
+        text = f"{size:g}"
+        index = self.size_combo.findText(text)
+        if index < 0:
+            self.size_combo.addItem(text)
+            index = self.size_combo.count() - 1
+        self.size_combo.setCurrentIndex(index)
+
+    def sync_format_controls(self) -> None:
+        self._updating_format = True
+        fmt = self.editor.currentCharFormat()
+        self.bold_button.setChecked(int(fmt.fontWeight()) >= int(QFont.Weight.Bold))
+        self.italic_button.setChecked(fmt.fontItalic())
+        size = fmt.fontPointSize()
+        if not size or size <= 0:
+            size = cover_letter.DEFAULT_SIZE
+        self._set_size_combo(size)
+        self._updating_format = False
+
+    def apply_bold(self) -> None:
+        fmt = QTextCharFormat()
+        fmt.setFontWeight(
+            QFont.Weight.Bold if self.bold_button.isChecked() else QFont.Weight.Normal
+        )
+        self.editor.mergeCurrentCharFormat(fmt)
+        self.editor.setFocus()
+
+    def apply_italic(self) -> None:
+        fmt = QTextCharFormat()
+        fmt.setFontItalic(self.italic_button.isChecked())
+        self.editor.mergeCurrentCharFormat(fmt)
+        self.editor.setFocus()
+
+    def apply_size(self, text: str) -> None:
+        if self._updating_format:
+            return
+        try:
+            size = float(text)
+        except ValueError:
+            return
+        if not cover_letter.MIN_SIZE <= size <= cover_letter.MAX_SIZE:
+            return
+        fmt = QTextCharFormat()
+        fmt.setFontPointSize(size)
+        self.editor.mergeCurrentCharFormat(fmt)
+        self.editor.setFocus()
+
+    def accept(self) -> None:
+        self.result_document = self.document_from_editor()
+        super().accept()
+
+
 class ExampleDialog(QDialog):
     def __init__(self, examples: list[dict[str, Any]], parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1020,9 +1224,17 @@ class MainWindow(QMainWindow):
         self.export_action.setShortcut("Ctrl+E")
         self.export_action.triggered.connect(self.export_html)
 
+        self.cover_letter_action = QAction("Cover letter", self)
+        self.cover_letter_action.setToolTip(
+            "Edit the cover letter; it uses the selected CV layout"
+        )
+        self.cover_letter_action.setShortcut("Ctrl+L")
+        self.cover_letter_action.triggered.connect(self.edit_cover_letter)
+
         toolbar.addAction(self.save_action)
         toolbar.addAction(self.add_item_action)
         toolbar.addAction(self.export_action)
+        toolbar.addAction(self.cover_letter_action)
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
@@ -1050,6 +1262,8 @@ class MainWindow(QMainWindow):
         self.delete_item_action = edit_menu.addAction(
             "Delete selected library item…", self.delete_library_item
         )
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.cover_letter_action)
 
         self.example_locked_actions = [
             self.save_action,
@@ -1062,6 +1276,7 @@ class MainWindow(QMainWindow):
             self.add_item_action,
             self.edit_item_action,
             self.delete_item_action,
+            self.cover_letter_action,
         ]
         self.example_locked_widgets: list[QWidget] = []
 
@@ -1121,11 +1336,17 @@ class MainWindow(QMainWindow):
         bar.setContentsMargins(10, 8, 10, 0)
         self.preview_label = QLabel("Preview")
         self.preview_label.setStyleSheet("font-weight: 600;")
+        self.preview_mode = QComboBox()
+        self.preview_mode.addItem("CV", "cv")
+        self.preview_mode.addItem("Cover letter", "cover_letter")
+        self.preview_mode.setToolTip("Choose which document the preview and export use")
+        self.preview_mode.currentIndexChanged.connect(lambda _index: self.update_preview())
         self.counts_label = QLabel("")
         self.counts_label.setStyleSheet("color: #6b7280;")
         open_button = QPushButton("Open in browser")
         open_button.clicked.connect(self.open_in_browser)
         bar.addWidget(self.preview_label)
+        bar.addWidget(self.preview_mode)
         bar.addWidget(self.counts_label)
         bar.addStretch(1)
         bar.addWidget(open_button)
@@ -1809,9 +2030,43 @@ class MainWindow(QMainWindow):
             "include": include,
         }
 
+    def render_cover_letter(self) -> str:
+        document = cover_letter.load()
+        return cover_letter.render(
+            self.dataset,
+            document,
+            self.effective_template(),
+            self.appearance,
+        )
+
+    def cover_letter_mode(self) -> bool:
+        return self.preview_mode.currentData() == "cover_letter"
+
     def update_preview(self) -> None:
         if not self.dataset:
             return
+        base = QUrl.fromLocalFile(str(self.root) + "/")
+
+        if self.cover_letter_mode():
+            try:
+                document = cover_letter.load()
+                html = cover_letter.render(
+                    self.dataset,
+                    document,
+                    self.effective_template(),
+                    self.appearance,
+                )
+            except (cover_letter.CoverLetterError, cvlib.CVDatasetError) as exc:
+                self.preview.set_message(str(exc))
+                self.statusBar().showMessage(str(exc), 8000)
+                return
+            self.preview.set_html(html, base)
+            count = len(document["paragraphs"])
+            self.counts_label.setText(
+                f"Cover letter · {count} paragraph(s)" if count else "Cover letter · empty"
+            )
+            return
+
         manifest = self.current_manifest()
         try:
             html = self.render_html(manifest)
@@ -1820,7 +2075,6 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(str(exc), 8000)
             return
 
-        base = QUrl.fromLocalFile(str(self.root) + "/")
         self.preview.set_html(html, base)
 
         roles = len(manifest["include"]["roles"])
@@ -1837,16 +2091,29 @@ class MainWindow(QMainWindow):
         )
 
     def export_html(self) -> None:
-        name = f"{self.example['slug']}.html" if self.example else f"cv-{date.today().isoformat()}.html"
+        if self.cover_letter_mode():
+            name = (
+                f"{self.example['slug']}-cover-letter.html"
+                if self.example
+                else f"cover-letter-{date.today().isoformat()}.html"
+            )
+            title = "Export cover letter HTML"
+        else:
+            name = (
+                f"{self.example['slug']}.html"
+                if self.example
+                else f"cv-{date.today().isoformat()}.html"
+            )
+            title = "Export HTML"
         default = str(self.output_root() / name)
-        path, _ = QFileDialog.getSaveFileName(self, "Export HTML", default, "HTML (*.html)")
+        path, _ = QFileDialog.getSaveFileName(self, title, default, "HTML (*.html)")
         if not path:
             return
         try:
-            html = self.render_html()
+            html = self.render_cover_letter() if self.cover_letter_mode() else self.render_html()
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             Path(path).write_text(html, encoding="utf-8")
-        except (cvlib.CVDatasetError, OSError) as exc:
+        except (cover_letter.CoverLetterError, cvlib.CVDatasetError, OSError) as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
             return
         self.statusBar().showMessage(f"Wrote {path}", 6000)
@@ -1867,14 +2134,44 @@ class MainWindow(QMainWindow):
 
     def open_in_browser(self) -> None:
         try:
-            html = self.render_html()
-        except cvlib.CVDatasetError as exc:
+            if self.cover_letter_mode():
+                html = self.render_cover_letter()
+                target = self.output_root() / "cover-letter-preview.html"
+            else:
+                html = self.render_html()
+                target = self.output_root() / "preview.html"
+        except (cover_letter.CoverLetterError, cvlib.CVDatasetError) as exc:
             QMessageBox.critical(self, "Cannot render", str(exc))
             return
-        target = self.output_root() / "preview.html"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(html, encoding="utf-8")
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
+
+    def edit_cover_letter(self) -> None:
+        if self.example:
+            return
+        try:
+            document = cover_letter.load()
+        except cover_letter.CoverLetterError as exc:
+            QMessageBox.critical(self, "Cannot open cover letter", str(exc))
+            return
+
+        dialog = CoverLetterDialog(document, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            cover_letter.save(cover_letter.DEFAULT_PATH, dialog.result_document)
+        except cover_letter.CoverLetterError as exc:
+            QMessageBox.critical(self, "Could not save cover letter", str(exc))
+            return
+
+        index = self.preview_mode.findData("cover_letter")
+        if index >= 0:
+            self.preview_mode.setCurrentIndex(index)
+        self.update_preview()
+        self.statusBar().showMessage(
+            f"Saved {cover_letter.DEFAULT_PATH}", 6000
+        )
 
     # ---------------- Editing ----------------
 

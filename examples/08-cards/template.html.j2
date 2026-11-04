@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name }} — CV</title>
+<title>{{ profile.name }} — {{ "Cover Letter" if cover_letter else "CV" }}</title>
 <style>
   :root {
     --accent: {{ theme.accent }};
@@ -108,6 +108,10 @@
     </div>
   </header>
 
+  {% if cover_letter %}
+  {{ cover_letter_html | safe }}
+  {% else %}
+
   {% if profile.summary %}
   <div class="summary">
     {% for para in profile.summary %}<p>{{ para }}</p>{% endfor %}
@@ -162,6 +166,7 @@
     </section>
     {% endif %}
   </div>
+  {% endif %}
 </main>
 </body>
 </html>

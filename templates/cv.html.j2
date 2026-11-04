@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ profile.name or "Curriculum Vitae" }}</title>
+<title>{{ profile.name or ("Cover Letter" if cover_letter else "Curriculum Vitae") }}</title>
 <style>
   @page {
     size: A4;
@@ -208,6 +208,9 @@
   </header>
   {% endif %}
 
+  {% if cover_letter %}
+  {{ cover_letter_html | safe }}
+  {% else %}
   {% if profile.summary %}
   <section aria-labelledby="summary">
     <h2 id="summary">Summary</h2>
@@ -292,6 +295,7 @@
   </section>
   {% endif %}
 
+  {% endif %}
 </main>
 </body>
 </html>
