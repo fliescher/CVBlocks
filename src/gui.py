@@ -302,7 +302,7 @@ class RoleDialog(QDialog):
         self.ach_themes.setPlaceholderText("performance, delivery")
         self.ach_text = QPlainTextEdit()
         self.ach_text.setPlaceholderText("Action → technology → measurable result.")
-        self.ach_highlight = QCheckBox("Highlight this bullet")
+        self.ach_highlight = QCheckBox("Highlight this item")
         self.ach_fields = QWidget()
         ach_form = QFormLayout(self.ach_fields)
         ach_form.setContentsMargins(0, 0, 0, 0)
@@ -485,15 +485,15 @@ class RoleDialog(QDialog):
 
 
 class CategoryChooserDialog(QDialog):
-    """The category chooser behind the single Add bullet action."""
+    """The category chooser behind the single Add item action."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Add bullet")
+        self.setWindowTitle("Add item")
         self.resize(660, 460)
 
         self.list = QListWidget()
-        choices = [("roles", "Role achievement", "Add a bullet to an existing role")]
+        choices = [("roles", "Role achievement", "Add an item to an existing role")]
         choices.extend(
             (
                 key,
@@ -519,7 +519,7 @@ class CategoryChooserDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.addWidget(
-            QLabel("Choose where the new bullet should live. You can edit or delete it later.")
+            QLabel("Choose where the new item should live. You can edit or delete it later.")
         )
         layout.addWidget(self.list, 1)
         layout.addWidget(buttons)
@@ -618,7 +618,7 @@ class LibraryItemDialog(QDialog):
 
 
 class AchievementDialog(QDialog):
-    """Add one achievement bullet to an existing role."""
+    """Add one achievement item to an existing role."""
 
     def __init__(
         self,
@@ -627,7 +627,7 @@ class AchievementDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.role = role
-        self.setWindowTitle(f"Add bullet to {role.get('title') or role.get('id')}")
+        self.setWindowTitle(f"Add item to {role.get('title') or role.get('id')}")
         self.resize(560, 320)
 
         self.id = QLineEdit()
@@ -637,7 +637,7 @@ class AchievementDialog(QDialog):
         self.text = QPlainTextEdit()
         self.text.setPlaceholderText("Action → technology → measurable result.")
         self.text.setFixedHeight(100)
-        self.highlight = QCheckBox("Highlight this bullet")
+        self.highlight = QCheckBox("Highlight this item")
 
         form = QFormLayout()
         form.addRow("ID", self.id)
@@ -660,7 +660,7 @@ class AchievementDialog(QDialog):
         if not achievement_id or not categories.SLUG_PATTERN.fullmatch(achievement_id):
             QMessageBox.warning(
                 self,
-                "Cannot save bullet",
+                "Cannot save item",
                 "The achievement ID must be a lowercase slug such as 'cut-latency'.",
             )
             return
@@ -668,11 +668,11 @@ class AchievementDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Duplicate ID",
-                f"This role already has a bullet with ID '{achievement_id}'.",
+                f"This role already has an item with ID '{achievement_id}'.",
             )
             return
         if not self.text.toPlainText().strip():
-            QMessageBox.warning(self, "Cannot save bullet", "The bullet needs text.")
+            QMessageBox.warning(self, "Cannot save item", "The item needs text.")
             return
         super().accept()
 
@@ -717,7 +717,7 @@ class AppearanceDialog(QDialog):
 
         for key, label, hint in (
             ("accent", "Accent", "Headings, rules, and links"),
-            ("highlight", "Highlight", "Bullets marked as important"),
+            ("highlight", "Highlight", "Items marked as important"),
         ):
             self.buttons[key] = self._color_button(key, hint)
             form.addRow(label, self.buttons[key])
@@ -974,24 +974,15 @@ class MainWindow(QMainWindow):
         self.highlight_button = QToolButton()
         self.highlight_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.highlight_button.setText("Highlight")
-        self.highlight_button.setToolTip("Colour for bullets marked as important")
+        self.highlight_button.setToolTip("Colour for items marked as important")
         self.highlight_button.clicked.connect(lambda: self.pick_color("highlight"))
 
         toolbar.addWidget(self.accent_button)
         toolbar.addWidget(self.highlight_button)
         toolbar.addSeparator()
 
-        self.add_bullet_action = QAction("Add bullet", self)
-        self.add_bullet_action.setToolTip(
-            "Add a role achievement or an item in any other content category"
-        )
-        self.add_bullet_action.setShortcut("Ctrl+B")
-        self.add_bullet_action.triggered.connect(self.add_bullet)
-        toolbar.addAction(self.add_bullet_action)
-        toolbar.addSeparator()
-
         self.mark_action = QAction("Mark important", self)
-        self.mark_action.setToolTip("Toggle the highlight colour on checked bullets")
+        self.mark_action.setToolTip("Toggle the highlight colour on checked items")
         self.mark_action.triggered.connect(self.toggle_highlight)
         toolbar.addAction(self.mark_action)
 
@@ -1006,10 +997,20 @@ class MainWindow(QMainWindow):
         self.save_action = QAction("Save", self)
         self.save_action.setShortcut("Ctrl+S")
         self.save_action.triggered.connect(self.save)
+
+        self.add_item_action = QAction("Add item", self)
+        self.add_item_action.setToolTip(
+            "Add a role achievement item or a category item"
+        )
+        self.add_item_action.setShortcut("Ctrl+I")
+        self.add_item_action.triggered.connect(self.add_item)
+
         self.export_action = QAction("Export HTML…", self)
         self.export_action.setShortcut("Ctrl+E")
         self.export_action.triggered.connect(self.export_html)
+
         toolbar.addAction(self.save_action)
+        toolbar.addAction(self.add_item_action)
         toolbar.addAction(self.export_action)
 
         menu = self.menuBar()
@@ -1031,7 +1032,7 @@ class MainWindow(QMainWindow):
         self.edit_role_action = edit_menu.addAction("Edit role…", self.edit_role)
         self.delete_role_action = edit_menu.addAction("Delete role…", self.delete_role)
         edit_menu.addSeparator()
-        edit_menu.addAction(self.add_bullet_action)
+        edit_menu.addAction(self.add_item_action)
         self.edit_item_action = edit_menu.addAction(
             "Edit selected library item…", self.edit_library_item
         )
@@ -1047,7 +1048,7 @@ class MainWindow(QMainWindow):
             self.add_role_action,
             self.edit_role_action,
             self.delete_role_action,
-            self.add_bullet_action,
+            self.add_item_action,
             self.edit_item_action,
             self.delete_item_action,
         ]
@@ -1071,7 +1072,7 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(8)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search role bullets…")
+        self.search.setPlaceholderText("Search role items…")
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.apply_filters)
 
@@ -1152,10 +1153,10 @@ class MainWindow(QMainWindow):
         self.library.itemDoubleClicked.connect(self.on_library_double_click)
 
         buttons = QHBoxLayout()
-        self.library_add_button = QPushButton("Add bullet…")
+        self.library_add_button = QPushButton("Add item…")
         self.library_edit_button = QPushButton("Edit…")
         self.library_delete_button = QPushButton("Delete…")
-        self.library_add_button.clicked.connect(self.add_bullet)
+        self.library_add_button.clicked.connect(self.add_item)
         self.library_edit_button.clicked.connect(self.edit_library_item)
         self.library_delete_button.clicked.connect(self.delete_library_item)
         buttons.addWidget(self.library_add_button)
@@ -1725,7 +1726,7 @@ class MainWindow(QMainWindow):
                     targets.append(child)
 
         if not targets:
-            self.statusBar().showMessage("Check at least one bullet first.", 4000)
+            self.statusBar().showMessage("Check at least one item first.", 4000)
             return
 
         turn_on = not all(
@@ -1749,7 +1750,7 @@ class MainWindow(QMainWindow):
         self.recolor_highlights()
         self.update_preview()
         self.statusBar().showMessage(
-            f"{'Highlighted' if turn_on else 'Unhighlighted'} {len(targets)} bullet(s) — save to keep.",
+            f"{'Highlighted' if turn_on else 'Unhighlighted'} {len(targets)} item(s) — save to keep.",
             5000,
         )
 
@@ -1812,13 +1813,16 @@ class MainWindow(QMainWindow):
         self.preview.set_html(html, base)
 
         roles = len(manifest["include"]["roles"])
-        bullets = sum(len(role["achievements"]) for role in manifest["include"]["roles"])
-        items = sum(
+        role_items = sum(
+            len(role["achievements"]) for role in manifest["include"]["roles"]
+        )
+        category_items = sum(
             len(manifest["include"].get(key, []))
             for key in categories.CATEGORY_ORDER
         )
         self.counts_label.setText(
-            f"{roles} role(s) · {bullets} bullet(s) · {items} library item(s)"
+            f"{roles} role(s) · {role_items} role item(s) · "
+            f"{category_items} category item(s)"
         )
 
     def export_html(self) -> None:
@@ -1863,7 +1867,7 @@ class MainWindow(QMainWindow):
 
     # ---------------- Editing ----------------
 
-    def add_bullet(self) -> None:
+    def add_item(self) -> None:
         if self.example:
             return
         chooser = CategoryChooserDialog(self)
@@ -1885,7 +1889,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "No roles yet",
-                "Add a role first, then you can add bullets to it.",
+                "Add a role first, then you can add items to it.",
             )
             return
 
@@ -1898,8 +1902,8 @@ class MainWindow(QMainWindow):
             ]
             label, accepted = QInputDialog.getItem(
                 self,
-                "Add bullet",
-                "Choose the role for this bullet:",
+                "Add item",
+                "Choose the role for this item:",
                 labels,
                 0,
                 False,
@@ -1921,7 +1925,7 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentWidget(self.tree)
         self.focus_achievement(role["id"], achievement["id"])
         self.statusBar().showMessage(
-            f"Added bullet to {role['title']} — save to keep.", 6000
+            f"Added item to {role['title']} — save to keep.", 6000
         )
 
     def add_library_item(self, category: str) -> None:
@@ -2301,7 +2305,7 @@ class MainWindow(QMainWindow):
             self,
             "About CV Selector",
             "<h3>CV Selector</h3>"
-            "<p>Edit the YAML dataset, pick role bullets and category items, "
+            "<p>Edit the YAML dataset, pick role items and category items, "
             "choose a layout and theme, highlight what matters, and export HTML.</p>"
             "<p>QtWebEngine: "
             + ("available" if WEBENGINE_AVAILABLE else "not available on this machine")

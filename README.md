@@ -1,7 +1,7 @@
 # CV Selector
 
 A CV that lives in plain YAML files: one file per item, one manifest per job
-application. Validate the dataset, pick the roles, bullets, skills, projects,
+application. Validate the dataset, pick the roles, items, skills, projects,
 and other entries you want, render a tailored HTML CV, print it to PDF.
 
 No database, no lock-in. Every fact is a text file you can read, diff, and
@@ -103,8 +103,8 @@ out/                           generated CVs (git-ignored)
 - **One item per file** in every category keeps diffs small and merge
   conflicts rare. The GUI writes one file when you add, edit, or delete a
   single item.
-- **Bullets** read action → technology → measurable result. In the roles
-  category, a bullet is an achievement nested under its role. In the other
+- **Items** read action → technology → measurable result. In the roles
+  category, an item is an achievement nested under its role. In the other
   categories, each YAML file is one entry (a skill, degree, certification,
   project, hobby, language, or selected project).
 - **Themes** are free-form achievement tags (`performance`, `reliability`,
@@ -112,7 +112,7 @@ out/                           generated CVs (git-ignored)
   job-description match can use them later. These are unrelated to the visual
   **Theme** presets in the toolbar.
 - **Colours** live in `profile.yaml` under `theme`. `accent` styles headings,
-  rules, and links; `highlight` styles bullets marked `highlight: true`.
+  rules, and links; `highlight` styles items marked `highlight: true`.
   Both are optional and fall back to the defaults.
 - **Unknown fields are rejected.** If you add a field, add it to the matching
   schema file too.
@@ -132,7 +132,7 @@ phone: "+49 30 1234567"
 
 theme:                      # optional; these are the defaults
   accent: "#1f4e5f"         # headings, rules, links
-  highlight: "#b45309"      # bullets marked as important
+  highlight: "#b45309"      # items marked as important
 
 links:
   - label: "github.com/abeispiel"
@@ -292,7 +292,7 @@ Rules:
   selected".
 - Roles render in the order you list them; without a manifest they sort
   newest-first by end date.
-- Listing `achievements` selects and orders those bullets only.
+- Listing `achievements` selects and orders those items only.
 - For backwards compatibility, the older `education`, `extras`, and `skills`
   booleans/lists are still accepted; new manifests use the category item IDs
   above.
@@ -338,13 +338,13 @@ render, so a typo there surfaces as `unknown role id` at that point.
 The window is split in two: the content library on the left, the live A4
 preview on the right.
 
-**Selecting** — tick roles or individual bullets on the **Experience** tab.
-A ticked role includes all of its bullets; unticking one leaves the role
+**Selecting** — tick roles or individual role items on the **Experience** tab.
+A ticked role includes all of its items; unticking one leaves the role
 partially checked. The **Library** tab groups the other categories (core
 skills, education, certifications & trainings, open source, hobbies,
 languages, selected projects). Its checkbox selects a whole category; child
 checkboxes select individual files. The preview and the
-`N role(s) · M bullet(s) · K library item(s)` counter update immediately.
+`N role(s) · M role item(s) · K category item(s)` counter update immediately.
 
 **Filtering** — type in the search box or pick an achievement tag. Filters
 only narrow the role tree; they never change what is selected.
@@ -352,11 +352,11 @@ only narrow the role tree; they never change what is selected.
 **Colours** — the toolbar has two colour swatches:
 
 - **Accent** — headings, rules, and links.
-- **Highlight** — bullets you mark as important.
+- **Highlight** — items you mark as important.
 
-Select the bullets that deserve emphasis and press **Mark important**. If every
-selected bullet is already highlighted, the button removes the highlight
-instead, so it acts as a toggle for the selection. Highlighted bullets get a
+Select the items that deserve emphasis and press **Mark important**. If every
+selected item is already highlighted, the button removes the highlight
+instead, so it acts as a toggle for the selection. Highlighted items get a
 star in the tree and render in the highlight colour. Colours are stored in
 `profile.yaml` under `theme`; the flag is stored per achievement as
 `highlight: true`, so both survive a restart and show up in the CLI render too.
@@ -394,13 +394,13 @@ From the command line: `python src/render.py --list-layouts`, then
 **Library** — the Library tab is the category browser and editor. Each
 category has a checkbox that selects all its items; each child checkbox
 selects one YAML file. Double-click an item (or use `Edit…`) to edit it,
-`Delete…` removes it after confirmation, and `Add bullet…` opens the same
+`Delete…` removes it after confirmation, and `Add item…` opens the same
 category chooser as the toolbar button. None of these checkboxes delete data;
 unchecking an item only omits it from the current preview and from a manifest
 you save.
 
-**Add bullet** — one toolbar action (`Ctrl+B`, also on `Edit`) opens a category
-chooser. Choosing **Role achievement** asks which role the bullet belongs to
+**Add item** — one toolbar action (`Ctrl+I`, also on `Edit`) opens a category
+chooser. Choosing **Role achievement** asks which role the item belongs to
 and adds a nested achievement; choosing any other category opens that
 category's item form and creates one YAML file. The new item is selected and
 in the current build until you press `Save`.
@@ -418,7 +418,7 @@ category. `File → Open dataset…` switches to another `cv-data` folder.
 `examples/data`. It is read-only: selection, the Library checkboxes, preview,
 `Export HTML…`, the Style dropdown, the Theme dropdown, and the colour controls
 still work (colour/theme changes stay in memory only). `Save`,
-`Save selection as…`, `Add bullet`, `Mark important`, and the editing actions
+`Save selection as…`, `Add item`, `Mark important`, and the editing actions
 are disabled. Use `File → Open dataset…` to return to your own data and the
 default template.
 
@@ -484,7 +484,7 @@ still works. Render one from the command line with:
 
 **Add a skill, degree, certification, project, hobby, or language**
 
-1. In the GUI: `Add bullet` (`Ctrl+B`) and choose the category. The item dialog
+1. In the GUI: `Add item` (`Ctrl+I`) and choose the category. The item dialog
    writes one YAML file in that category on the next `Save`. Or copy the
    category's `_TEMPLATE.yaml` by hand.
 2. Use a lowercase slug for `id`; manifests reference it.
@@ -492,9 +492,9 @@ still works. Render one from the command line with:
 
 **Tailor for an application**
 
-1. In the GUI: tick the bullets, then `File → Save selection as…`. Or create
+1. In the GUI: tick the items, then `File → Save selection as…`. Or create
    `cv-data/applications/2026-11-acme/manifest.yaml` from the example by hand.
-2. Paste the job description, list the roles and bullets that answer it.
+2. Paste the job description, list the roles and items that answer it.
 3. Export to `out/acme.html` (choose the name in the export dialog).
 4. Keep the manifest and the generated HTML together so the variant can be
    reproduced or compared later.
@@ -527,7 +527,7 @@ margins **Default**, **Background graphics on**. The filename convention
 ## Why files instead of a database
 
 The dataset is meant to be reviewed in a pull request, grepped, and backed up
-by copying a folder. At CV scale (hundreds of bullets) an in-memory list is
+by copying a folder. At CV scale (hundreds of items) an in-memory list is
 plenty; a database would add a binary blob that cannot be diffed.
 
 If search ever gets slow, build a throwaway index at startup — never make it

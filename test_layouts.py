@@ -72,8 +72,8 @@ dataset = {
     "roles": [
         {"id": "a", "company": "Lumen", "title": "Staff Engineer", "start": "2022-04", "end": None,
          "location": "Rotterdam", "scope": "Scope text.",
-         "achievements": [{"id": "x", "themes": [], "text": "Plain bullet."},
-                          {"id": "y", "themes": [], "text": "Highlighted bullet.", "highlight": True}]},
+         "achievements": [{"id": "x", "themes": [], "text": "Plain item."},
+                          {"id": "y", "themes": [], "text": "Highlighted item.", "highlight": True}]},
         {"id": "b", "company": "Northwind", "title": "Backend Engineer", "start": "2018-08", "end": "2022-03",
          "location": "Berlin", "scope": "", "achievements": [{"id": "z", "themes": [], "text": "Another."}]},
     ],
@@ -83,7 +83,7 @@ for item in items:
     html = cvlib.render_dataset(dataset, None, item["template"])
     slug = item["slug"]
     assert "#123456" in html and "#654321" in html, f"{slug}: colours not applied"
-    assert "Jordan Avery" in html and "Highlighted bullet." in html and "Lumen" in html, slug
+    assert "Jordan Avery" in html and "Highlighted item." in html and "Lumen" in html, slug
     assert "is-highlight" in html, f"{slug}: highlight class missing"
     assert "Cycling" in html and "Billing rewrite" in html, (
         f"{slug}: hobbies or selected projects missing"

@@ -4,7 +4,7 @@
 # Conventions:
 #   - Quote dates: YAML would otherwise strip leading zeros or coerce them.
 #   - id values must be unique (role id across roles, achievement id within a role).
-#   - Bullet text follows: action -> technology -> measurable result.
+#   - Item text follows: action -> technology -> measurable result.
 
 id: ""                  # e.g. acme-senior
 company: ""
@@ -23,5 +23,5 @@ achievements: []
   #     queries with batched reads, lifting conversion 2.1%.
   #   metrics:
   #     - { label: p95 latency, before: 900, after: 180, unit: ms }
-  #   highlight: true   # optional: render this bullet in the highlight colour
+  #   highlight: true   # optional: render this item in the highlight colour
 

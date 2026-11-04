@@ -47,7 +47,7 @@
           },
           "highlight": {
             "type": "boolean",
-            "description": "Render this bullet in the highlight colour."
+            "description": "Render this item in the highlight colour."
           },
           "metrics": {
             "type": "array",

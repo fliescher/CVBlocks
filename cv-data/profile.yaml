@@ -12,7 +12,7 @@ phone: ""
 # pick colours.
 # theme:
 #   accent: "#1f4e5f"       # headings, rules, links
-#   highlight: "#b45309"    # bullets marked as important
+#   highlight: "#b45309"    # items marked as important
 
 links: []
   # - label: GitHub

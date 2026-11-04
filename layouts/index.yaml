@@ -54,7 +54,7 @@ layouts:
     template: 13-swiss.html.j2
   - slug: 14-split-header
     name: "Split header"
-    description: "Name on the left, contact stacked on the right, square bullets, and a three-column skills grid."
+    description: "Name on the left, contact stacked on the right, square list markers, and a three-column skills grid."
     template: 14-split-header.html.j2
   - slug: 15-ribbon
     name: "Ribbon"

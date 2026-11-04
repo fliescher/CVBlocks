@@ -12,7 +12,7 @@ Quick reminders:
 - Every other category is also one item per file: `core-skills/`,
   `education/`, `certifications/`, `open-source/`, `hobbies/`, `languages/`,
   and `projects/`. Copy the `_TEMPLATE.yaml` in the folder you need.
-- The GUI **Library** tab and the **Add bullet** action write these files for
+- The GUI **Library** tab and the **Add item** action write these files for
   you; files starting with `_` are ignored by the loader.
 - Quote dates (`"2021-03"`) and anything YAML might reinterpret (`"NO"`, `"1.10"`).
 - IDs are unique within each category; achievement IDs are unique per role.

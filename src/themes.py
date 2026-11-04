@@ -6,7 +6,7 @@ Pure Python, no Qt. Not to be confused with the free-form achievement tags
 A style has five keys:
 
     accent     headings, rules, links          (template variable theme.accent)
-    highlight  bullets marked important        (template variable theme.highlight)
+    highlight  items marked important          (template variable theme.highlight)
     text       body text colour
     desk       screen backdrop behind the page (screen only, never printed)
     font       CSS font-family stack, system fonts only
@@ -35,7 +35,7 @@ COLOR_LABELS = {
 
 COLOR_HINTS = {
     "accent": "Headings, rules, and links",
-    "highlight": "Bullets marked as important",
+    "highlight": "Items marked as important",
     "text": "Body text colour",
     "desk": "Screen backdrop behind the page (not printed)",
 }

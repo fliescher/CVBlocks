@@ -3,7 +3,7 @@
 The dataset has one directory per category. Every item lives in its own YAML
 file, which keeps diffs small and lets the GUI add, edit, and delete a single
 entry without rewriting a list. Roles are special: they already have their own
-directory and a richer schema, including nested achievement bullets.
+directory and a richer schema, including nested achievement items.
 
 This module is pure Python and has no Qt imports, so the GUI and the command
 line enforce the same rules.
